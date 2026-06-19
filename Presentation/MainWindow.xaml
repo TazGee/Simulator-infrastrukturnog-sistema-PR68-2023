@@ -88,7 +88,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <Grid VerticalAlignment="Center" SnapsToDevicePixels="True">
+                        <Grid VerticalAlignment="Center"
+                              SnapsToDevicePixels="True">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="16"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -143,7 +144,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
-                        <Grid VerticalAlignment="Center" SnapsToDevicePixels="True">
+                        <Grid VerticalAlignment="Center"
+                              SnapsToDevicePixels="True">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="18"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -218,6 +220,29 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
 
+        <Style x:Key="NetworkGridDropSlotStyle" TargetType="ContentControl">
+            <Setter Property="Margin" Value="7"/>
+            <Setter Property="AllowDrop" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContentControl">
+                        <Grid Background="#E9E9E9">
+                            <Rectangle Stroke="#9A9A9A"
+                                       StrokeThickness="2"
+                                       StrokeDashArray="4 4"
+                                       Fill="#E9E9E9"/>
+                            <TextBlock Text="DRAG ENTITY HERE"
+                                       Foreground="#9A9A9A"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <DataTemplate x:Key="EntityTreeItemTemplate">
             <Border Height="30"
                     BorderBrush="#777777"
@@ -248,67 +273,6 @@
                 <ItemsControl ItemsSource="{Binding Entities}"
                               ItemTemplate="{StaticResource EntityTreeItemTemplate}"/>
             </Expander>
-        </DataTemplate>
-
-        <DataTemplate x:Key="NetworkSlotTemplate">
-            <Border Margin="7"
-                    BorderBrush="#999999"
-                    BorderThickness="2"
-                    Background="#E9E9E9">
-                <Grid>
-                    <TextBlock Text="DRAG ENTITY HERE"
-                               Foreground="#9A9A9A"
-                               FontSize="16"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               Visibility="{Binding EmptyTextVisibility}"/>
-
-                    <Border Width="138"
-                            Height="104"
-                            Background="#F2F2F2"
-                            BorderBrush="#333333"
-                            BorderThickness="1.5"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            Visibility="{Binding EntityCardVisibility}">
-                        <Grid Margin="9">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="28"/>
-                                <RowDefinition Height="38"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0"
-                                       Text="{Binding EntityName}"
-                                       FontWeight="SemiBold"
-                                       FontSize="16"
-                                       HorizontalAlignment="Center"/>
-
-                            <TextBlock Grid.Row="1"
-                                       Text="{Binding LastMeasureText}"
-                                       FontWeight="Bold"
-                                       FontSize="20"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-
-                            <Grid Grid.Row="2">
-                                <TextBlock Text="▱"
-                                           FontSize="25"
-                                           HorizontalAlignment="Left"
-                                           VerticalAlignment="Bottom"/>
-                                <TextBlock Text="{Binding StatusText}"
-                                           FontSize="10"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Bottom"/>
-                                <TextBlock Text="{Binding StatusIcon}"
-                                           FontSize="28"
-                                           HorizontalAlignment="Right"
-                                           VerticalAlignment="Bottom"/>
-                            </Grid>
-                        </Grid>
-                    </Border>
-                </Grid>
-            </Border>
         </DataTemplate>
 
         <DataTemplate x:Key="GraphPointTemplate">
@@ -524,32 +488,22 @@
                                     </Grid>
 
                                     <Grid Grid.Row="1">
-                                        <ItemsControl ItemsSource="{Binding NetworkDisplay.Connections}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <Canvas/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Line X1="{Binding X1}"
-                                                          Y1="{Binding Y1}"
-                                                          X2="{Binding X2}"
-                                                          Y2="{Binding Y2}"
-                                                          Stroke="#444444"
-                                                          StrokeThickness="3"/>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-
-                                        <ItemsControl ItemsSource="{Binding NetworkDisplay.Slots}"
-                                                      ItemTemplate="{StaticResource NetworkSlotTemplate}">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <UniformGrid Rows="4" Columns="3"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                        </ItemsControl>
+                                        <UniformGrid Rows="4"
+                                                     Columns="3"
+                                                     Margin="0">
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
+                                        </UniformGrid>
                                     </Grid>
 
                                     <Button Command="{Binding NetworkDisplay.AutoPlaceEntitiesCommand}"
@@ -648,7 +602,7 @@
                                         <Button Grid.Column="3"
                                                 Command="{Binding NetworkEntities.OpenAddEntityDialogCommand}"
                                                 MinWidth="120"
-                                                Height="31">
+                                                Height="29">
                                             <TextBlock Text="Add entity"
                                                        FontSize="16"
                                                        VerticalAlignment="Center"
