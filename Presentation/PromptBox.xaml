@@ -58,7 +58,8 @@
 
             <Border Background="#CFCFCF"
                     BorderBrush="#777777"
-                    BorderThickness="0,0,0,1">
+                    BorderThickness="0,0,0,1"
+                    MouseLeftButtonDown="WindowHeader_MouseLeftButtonDown">
                 <Grid>
                     <TextBlock Text="?"
                                Width="22"

@@ -12,7 +12,9 @@
         FontSize="16"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Display">
+        TextOptions.TextFormattingMode="Display"
+        WindowStyle="None"
+        ResizeMode="NoResize">
 
     <Window.Resources>
         <Style TargetType="Button">
@@ -62,7 +64,8 @@
                     BorderBrush="#6E6E6E"
                     BorderThickness="1"
                     CornerRadius="2"
-                    Background="#E1E1E1">
+                    Background="#E1E1E1"
+                    MouseLeftButtonDown="WindowHeader_MouseLeftButtonDown">
                 <Grid Margin="14,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
