@@ -624,7 +624,7 @@
 
                                 <Border Grid.Row="3"
                                         BorderBrush="{StaticResource BorderBrushMain}"
-                                        BorderThickness="1">
+                                        BorderThickness="1" Margin="0,0,0,37">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="*"/>
@@ -667,12 +667,12 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Grid.Row="5"
+                                <Border Grid.Row="3"
                                         BorderBrush="{StaticResource BorderBrushMain}"
                                         BorderThickness="1"
                                         Background="#DADADA"
                                         CornerRadius="2"
-                                        Padding="12">
+                                        Padding="12" Margin="0,317,0,0" Grid.RowSpan="3">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="30"/>
