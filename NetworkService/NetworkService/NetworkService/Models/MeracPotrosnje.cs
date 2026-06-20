@@ -7,5 +7,6 @@ namespace NetworkService.Models
         public int Id { get; set; }  = 0;
         public string Name { get; set; } = string.Empty;
         public EntityType EntityType { get; set; } = EntityType.INTERVAL_METER;
+        public double LastMeasure { get; set; }
     }
 }

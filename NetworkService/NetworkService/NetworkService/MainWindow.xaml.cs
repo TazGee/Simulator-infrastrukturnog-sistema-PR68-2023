@@ -2,6 +2,7 @@
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using NetworkService.ViewModel;
 
 namespace NetworkService
 {
@@ -13,6 +14,7 @@ namespace NetworkService
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = new MainWindowViewModel();
         }
 
         private void WindowHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
