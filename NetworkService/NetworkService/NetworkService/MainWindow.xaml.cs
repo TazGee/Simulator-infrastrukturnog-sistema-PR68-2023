@@ -3,14 +3,14 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 
-namespace Presentation
+namespace NetworkService
 {
     /// <summary>
-    /// Interaction logic for AddEntityWindow.xaml
+    /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class AddEntityWindow : Window
+    public partial class MainWindow : Window
     {
-        public AddEntityWindow()
+        public MainWindow()
         {
             InitializeComponent();
         }

@@ -13,18 +13,17 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace Presentation
+namespace NetworkService
 {
     /// <summary>
-    /// Interaction logic for MessageBoxWindow.xaml
+    /// Interaction logic for AddEntityWindow.xaml
     /// </summary>
-    public partial class MessageBoxWindow : Window
+    public partial class AddEntityWindow : Window
     {
-        public MessageBoxWindow()
+        public AddEntityWindow()
         {
             InitializeComponent();
         }
-
         private void WindowHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed)

@@ -1,8 +1,8 @@
-﻿<Window x:Class="Presentation.MessageBoxWindow"
+﻿<Window x:Class="NetworkService.AddEntityWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="610"
-        Height="200"
+        Width="390"
+        Height="170"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
@@ -45,6 +45,17 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Height" Value="31"/>
+            <Setter Property="Background" Value="#F4F4F4"/>
+            <Setter Property="BorderBrush" Value="#777777"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="16"/>
+        </Style>
     </Window.Resources>
 
     <Border BorderBrush="#555555"
@@ -52,7 +63,7 @@
             Background="#E7E7E7">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="42"/>
+                <RowDefinition Height="43"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
@@ -61,7 +72,7 @@
                     BorderThickness="0,0,0,1"
                     MouseLeftButtonDown="WindowHeader_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="i"
+                    <TextBlock Text="+"
                                Width="22"
                                Height="22"
                                FontSize="18"
@@ -69,12 +80,12 @@
                                VerticalAlignment="Center"
                                HorizontalAlignment="Left"
                                Margin="15,0,0,0"/>
-                    <TextBlock Text="{Binding Title}"
+                    <TextBlock Text="Add entity"
                                FontWeight="Bold"
                                FontSize="17"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
-                    <Button Command="{Binding CloseCommand}"
+                    <Button Command="{Binding CancelCommand}"
                             Width="35"
                             Height="32"
                             BorderThickness="0"
@@ -92,27 +103,21 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1" Margin="25,18,25,12">
+            <Grid Grid.Row="1" Margin="70,20,70,20">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="48"/>
+                    <RowDefinition Height="32"/>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="39"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="{Binding MessageText}"
-                           TextWrapping="Wrap"
-                           TextAlignment="Center"
-                           FontSize="17"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Top"
-                           MaxWidth="545"/>
+                <TextBox Text="{Binding EntityName, UpdateSourceTrigger=PropertyChanged}"
+                         HorizontalContentAlignment="Center"/>
 
-                <Button Grid.Row="1"
-                        Command="{Binding ConfirmCommand}"
-                        Width="193"
-                        Height="38"
-                        HorizontalAlignment="Center">
-                    <TextBlock Text="{Binding ConfirmButtonText}"
-                               FontSize="16"
+                <Button Grid.Row="2"
+                        Command="{Binding AddEntityCommand}"
+                        Height="38">
+                    <TextBlock Text="Add entity"
+                               FontSize="17"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Center"/>

@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Presentation.Properties
+namespace NetworkService.Properties
 {
 
 

@@ -13,18 +13,17 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace Presentation
+namespace NetworkService
 {
     /// <summary>
-    /// Interaction logic for PromptBox.xaml
+    /// Interaction logic for LogWindow.xaml
     /// </summary>
-    public partial class PromptBox : Window
+    public partial class LogWindow : Window
     {
-        public PromptBox()
+        public LogWindow()
         {
             InitializeComponent();
         }
-
         private void WindowHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed)

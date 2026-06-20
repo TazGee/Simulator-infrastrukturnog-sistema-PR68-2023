@@ -1,30 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
+﻿using System.Windows;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
-namespace Presentation
+namespace NetworkService
 {
     /// <summary>
-    /// Interaction logic for LogWindow.xaml
+    /// Interaction logic for PromptBoxWindow.xaml
     /// </summary>
-    public partial class LogWindow : Window
+    public partial class PromptBoxWindow : Window
     {
-        public LogWindow()
+        public PromptBoxWindow()
         {
             InitializeComponent();
         }
-
         private void WindowHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.LeftButton != MouseButtonState.Pressed)
