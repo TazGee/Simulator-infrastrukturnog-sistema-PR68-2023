@@ -58,12 +58,14 @@
     <Compile Include="AddEntityWindow.xaml.cs">
       <DependentUpon>AddEntityWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Enums\EntityType.cs" />
     <Compile Include="LogWindow.xaml.cs">
       <DependentUpon>LogWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="MessageBoxWindow.xaml.cs">
       <DependentUpon>MessageBoxWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Models\MeracPotrosnje.cs" />
     <Compile Include="PromptBoxWindow.xaml.cs">
       <DependentUpon>PromptBoxWindow.xaml</DependentUpon>
     </Compile>
@@ -124,7 +126,6 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Model\" />
     <Folder Include="Views\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
