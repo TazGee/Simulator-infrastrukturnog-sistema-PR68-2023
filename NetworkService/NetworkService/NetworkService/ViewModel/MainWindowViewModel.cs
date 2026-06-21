@@ -17,10 +17,11 @@ using System.Windows.Input;
 
 namespace NetworkService.ViewModel
 {
-    public class MainWindowViewModel
+    public class MainWindowViewModel : INotifyPropertyChanged
     {
         private readonly object entitiesLock = new object();
         private readonly object logLock = new object();
+        private int selectedRightTabIndex;
 
         public List<MeracPotrosnje> listaObjekata = new List<MeracPotrosnje>();
 
@@ -31,16 +32,28 @@ namespace NetworkService.ViewModel
         public ICommand BackCommand { get; private set; }
         public ICommand ToggleFullscreenCommand { get; private set; }
         public ICommand CloseApplicationCommand { get; private set; }
+        public ICommand OpenUsageLogCommand { get; private set; }
+
+        public int SelectedRightTabIndex
+        {
+            get { return selectedRightTabIndex; }
+            set
+            {
+                selectedRightTabIndex = value;
+                OnPropertyChanged("SelectedRightTabIndex");
+            }
+        }
 
         public MainWindowViewModel()
         {
             NetworkEntities = new NetworkEntitiesViewModel(this);
-            NetworkDisplay = new NetworkDisplayViewModel();
+            NetworkDisplay = new NetworkDisplayViewModel(NetworkEntities.Entities);
             MeasurementGraph = new MeasurementGraphViewModel(NetworkEntities.Entities);
 
             BackCommand = new RelayCommand(_ => { });
             ToggleFullscreenCommand = new RelayCommand(_ => ToggleFullscreen());
             CloseApplicationCommand = new RelayCommand(_ => Application.Current.Shutdown());
+            OpenUsageLogCommand = new RelayCommand(_ => OpenUsageLog());
 
             createListener();
         }
@@ -57,6 +70,13 @@ namespace NetworkService.ViewModel
             mainWindow.WindowState = mainWindow.WindowState == WindowState.Maximized
                 ? WindowState.Normal
                 : WindowState.Maximized;
+        }
+
+        private void OpenUsageLog()
+        {
+            LogWindow logWindow = new LogWindow();
+            logWindow.Owner = Application.Current.MainWindow;
+            logWindow.ShowDialog();
         }
 
         private void createListener()
@@ -168,6 +188,7 @@ namespace NetworkService.ViewModel
 
             Application.Current.Dispatcher.Invoke(() =>
             {
+                entity.HasMeasurement = true;
                 entity.LastMeasure = measure;
                 MeasurementGraph.AddMeasurement(entity, measure, measurementTime);
             });
@@ -187,15 +208,14 @@ namespace NetworkService.ViewModel
             string logFilePath = Path.Combine(logsFolderPath, "measurements_log.txt");
             string status = measure >= 0.34 && measure <= 2.73 ? "VALID" : "INVALID";
 
-            string logLine =
-                measurementTime.ToString("yyyy-MM-dd HH:mm:ss.fff") +
-                " | Simulator entity: Entitet_" + simulatorEntityIndex +
-                " | Entity ID: " + entity.Id +
-                " | Name: " + entity.Name +
-                " | Type: " + entity.TypeName +
-                " | Value: " + measure.ToString("F2", CultureInfo.InvariantCulture) + " kWh" +
-                " | Status: " + status +
-                Environment.NewLine;
+            string logLine = measurementTime.ToString("yyyy-MM-dd HH:mm:ss.fff") +
+                             " | Simulator entity: Entitet_" + simulatorEntityIndex +
+                             " | Entity ID: " + entity.Id +
+                             " | Name: " + entity.Name +
+                             " | Type: " + entity.TypeName +
+                             " | Value: " + measure.ToString("F2", CultureInfo.InvariantCulture) + " kWh" +
+                             " | Status: " + status +
+                             Environment.NewLine;
 
             lock (logLock)
             {
@@ -220,7 +240,8 @@ namespace NetworkService.ViewModel
                 Id = newId,
                 Name = typeInfo.Name + " " + newId,
                 Type = typeInfo,
-                LastMeasure = 0
+                LastMeasure = 0,
+                HasMeasurement = false
             };
 
             lock (entitiesLock)
@@ -230,7 +251,35 @@ namespace NetworkService.ViewModel
 
             NetworkEntities.Entities.Add(entity);
             NetworkDisplay.RefreshAvailableEntities(NetworkEntities.Entities);
-            MeasurementGraph.SelectedEntity = MeasurementGraph.SelectedEntity ?? entity;
+
+            if (MeasurementGraph.SelectedEntity == null)
+            {
+                MeasurementGraph.SelectedEntity = entity;
+            }
+
+            RestartMeteringSimulatorIfPossible();
+        }
+
+        public void RemoveEntity(MeracPotrosnje entity)
+        {
+            if (entity == null)
+            {
+                return;
+            }
+
+            lock (entitiesLock)
+            {
+                listaObjekata.Remove(entity);
+            }
+
+            NetworkDisplay.RemoveEntityFromGrid(entity);
+            NetworkEntities.Entities.Remove(entity);
+            NetworkDisplay.RefreshAvailableEntities(NetworkEntities.Entities);
+
+            if (MeasurementGraph.SelectedEntity == entity)
+            {
+                MeasurementGraph.SelectedEntity = NetworkEntities.Entities.FirstOrDefault();
+            }
 
             RestartMeteringSimulatorIfPossible();
         }
@@ -286,6 +335,18 @@ namespace NetworkService.ViewModel
 
             return string.Empty;
         }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChangedEventHandler handler = PropertyChanged;
+
+            if (handler != null)
+            {
+                handler(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
     }
 
     public class NetworkEntitiesViewModel : INotifyPropertyChanged
@@ -293,6 +354,7 @@ namespace NetworkService.ViewModel
         private readonly MainWindowViewModel parent;
         private MeracPotrosnje selectedEntity;
         private string selectedEntityType;
+        private string selectedSavedFilter;
 
         public ObservableCollection<MeracPotrosnje> Entities { get; private set; }
         public ObservableCollection<string> SavedFilters { get; private set; }
@@ -323,7 +385,15 @@ namespace NetworkService.ViewModel
             }
         }
 
-        public string SelectedSavedFilter { get; set; }
+        public string SelectedSavedFilter
+        {
+            get { return selectedSavedFilter; }
+            set
+            {
+                selectedSavedFilter = value;
+                OnPropertyChanged("SelectedSavedFilter");
+            }
+        }
 
         public NetworkEntitiesViewModel(MainWindowViewModel parent)
         {
@@ -346,9 +416,7 @@ namespace NetworkService.ViewModel
                 return;
             }
 
-            parent.listaObjekata.Remove(SelectedEntity);
-            Entities.Remove(SelectedEntity);
-            parent.NetworkDisplay.RefreshAvailableEntities(Entities);
+            parent.RemoveEntity(SelectedEntity);
             SelectedEntity = null;
         }
 
@@ -362,7 +430,6 @@ namespace NetworkService.ViewModel
             }
 
             SelectedSavedFilter = preset;
-            OnPropertyChanged("SelectedSavedFilter");
         }
 
         private void ClearFilters()
@@ -475,17 +542,172 @@ namespace NetworkService.ViewModel
         }
     }
 
-    public class NetworkDisplayViewModel
+    public class NetworkDisplayViewModel : INotifyPropertyChanged
     {
-        public ObservableCollection<EntityTypeGroupViewModel> AvailableEntityTypes { get; private set; }
-        public ICommand AutoPlaceEntitiesCommand { get; private set; }
+        private readonly ObservableCollection<MeracPotrosnje> allEntities;
+        private NetworkGridSlotViewModel selectedConnectionStartSlot;
 
-        public NetworkDisplayViewModel()
+        public ObservableCollection<EntityTypeGroupViewModel> AvailableEntityTypes { get; private set; }
+        public ObservableCollection<NetworkGridSlotViewModel> DropSlots { get; private set; }
+        public ObservableCollection<NetworkConnectionViewModel> Connections { get; private set; }
+        public ICommand AutoPlaceEntitiesCommand { get; private set; }
+        public ICommand RemoveEntityFromSlotCommand { get; private set; }
+
+        public NetworkDisplayViewModel(ObservableCollection<MeracPotrosnje> allEntities)
         {
+            this.allEntities = allEntities;
             AvailableEntityTypes = new ObservableCollection<EntityTypeGroupViewModel>();
+            DropSlots = new ObservableCollection<NetworkGridSlotViewModel>();
+            Connections = new ObservableCollection<NetworkConnectionViewModel>();
+
             AvailableEntityTypes.Add(new EntityTypeGroupViewModel("Interval Meter"));
             AvailableEntityTypes.Add(new EntityTypeGroupViewModel("Smart Meter"));
-            AutoPlaceEntitiesCommand = new RelayCommand(_ => { });
+
+            for (int i = 1; i <= 12; i++)
+            {
+                DropSlots.Add(new NetworkGridSlotViewModel(i));
+            }
+
+            AutoPlaceEntitiesCommand = new RelayCommand(_ => AutoPlaceEntities());
+            RemoveEntityFromSlotCommand = new RelayCommand(parameter => RemoveEntityFromSlot(parameter as NetworkGridSlotViewModel));
+        }
+
+        public bool CanPlaceEntityInSlot(MeracPotrosnje entity, NetworkGridSlotViewModel targetSlot)
+        {
+            if (entity == null || targetSlot == null)
+            {
+                return false;
+            }
+
+            return targetSlot.Entity == null || targetSlot.Entity == entity;
+        }
+
+        public bool PlaceEntityInSlot(MeracPotrosnje entity, NetworkGridSlotViewModel targetSlot)
+        {
+            if (!CanPlaceEntityInSlot(entity, targetSlot))
+            {
+                return false;
+            }
+
+            NetworkGridSlotViewModel currentSlot = DropSlots.FirstOrDefault(slot => slot.Entity == entity);
+
+            if (currentSlot == targetSlot)
+            {
+                return true;
+            }
+
+            if (currentSlot != null)
+            {
+                currentSlot.Entity = null;
+            }
+
+            targetSlot.Entity = entity;
+            RefreshAvailableEntities(allEntities);
+            return true;
+        }
+
+        public void HandleSlotClickForConnection(NetworkGridSlotViewModel clickedSlot)
+        {
+            if (clickedSlot == null || clickedSlot.Entity == null)
+            {
+                ClearSelectedConnectionStartSlot();
+                return;
+            }
+
+            if (selectedConnectionStartSlot == null)
+            {
+                selectedConnectionStartSlot = clickedSlot;
+                selectedConnectionStartSlot.IsSelectedForConnection = true;
+                return;
+            }
+
+            if (selectedConnectionStartSlot == clickedSlot)
+            {
+                ClearSelectedConnectionStartSlot();
+                return;
+            }
+
+            AddConnection(selectedConnectionStartSlot.Entity, clickedSlot.Entity);
+            ClearSelectedConnectionStartSlot();
+        }
+
+        private void AddConnection(MeracPotrosnje firstEntity, MeracPotrosnje secondEntity)
+        {
+            if (firstEntity == null || secondEntity == null || firstEntity == secondEntity)
+            {
+                return;
+            }
+
+            bool alreadyExists = Connections.Any(connection =>
+                (connection.FirstEntity == firstEntity && connection.SecondEntity == secondEntity) ||
+                (connection.FirstEntity == secondEntity && connection.SecondEntity == firstEntity));
+
+            if (alreadyExists)
+            {
+                return;
+            }
+
+            Connections.Add(new NetworkConnectionViewModel(firstEntity, secondEntity));
+        }
+
+        private void ClearSelectedConnectionStartSlot()
+        {
+            if (selectedConnectionStartSlot != null)
+            {
+                selectedConnectionStartSlot.IsSelectedForConnection = false;
+                selectedConnectionStartSlot = null;
+            }
+        }
+
+        public void RemoveEntityFromSlot(NetworkGridSlotViewModel slot)
+        {
+            if (slot == null || slot.Entity == null)
+            {
+                return;
+            }
+
+            MeracPotrosnje entity = slot.Entity;
+            slot.Entity = null;
+            RemoveConnectionsForEntity(entity);
+            ClearSelectedConnectionStartSlot();
+            RefreshAvailableEntities(allEntities);
+        }
+
+        public void RemoveEntityFromGrid(MeracPotrosnje entity)
+        {
+            if (entity == null)
+            {
+                return;
+            }
+
+            foreach (NetworkGridSlotViewModel slot in DropSlots)
+            {
+                if (slot.Entity == entity)
+                {
+                    slot.Entity = null;
+                }
+            }
+
+            RemoveConnectionsForEntity(entity);
+            ClearSelectedConnectionStartSlot();
+            RefreshAvailableEntities(allEntities);
+        }
+
+        private void RemoveConnectionsForEntity(MeracPotrosnje entity)
+        {
+            List<NetworkConnectionViewModel> connectionsToRemove = Connections
+                .Where(connection => connection.FirstEntity == entity || connection.SecondEntity == entity)
+                .ToList();
+
+            foreach (NetworkConnectionViewModel connection in connectionsToRemove)
+            {
+                Connections.Remove(connection);
+            }
+        }
+
+        public NetworkGridSlotViewModel GetSlotByEntity(MeracPotrosnje entity)
+        {
+            return DropSlots.FirstOrDefault(slot => slot.Entity == entity);
         }
 
         public void RefreshAvailableEntities(IEnumerable<MeracPotrosnje> entities)
@@ -497,6 +719,11 @@ namespace NetworkService.ViewModel
 
             foreach (MeracPotrosnje entity in entities)
             {
+                if (IsEntityPlacedOnGrid(entity))
+                {
+                    continue;
+                }
+
                 EntityTypeGroupViewModel group = AvailableEntityTypes.FirstOrDefault(item => item.Name == entity.TypeName);
 
                 if (group != null)
@@ -504,6 +731,113 @@ namespace NetworkService.ViewModel
                     group.Entities.Add(entity);
                 }
             }
+        }
+
+        private bool IsEntityPlacedOnGrid(MeracPotrosnje entity)
+        {
+            return DropSlots.Any(slot => slot.Entity == entity);
+        }
+
+        private void AutoPlaceEntities()
+        {
+            List<MeracPotrosnje> availableEntities = allEntities
+                .Where(entity => !IsEntityPlacedOnGrid(entity))
+                .ToList();
+
+            foreach (MeracPotrosnje entity in availableEntities)
+            {
+                NetworkGridSlotViewModel freeSlot = DropSlots.FirstOrDefault(slot => slot.Entity == null);
+
+                if (freeSlot == null)
+                {
+                    break;
+                }
+
+                freeSlot.Entity = entity;
+            }
+
+            RefreshAvailableEntities(allEntities);
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChangedEventHandler handler = PropertyChanged;
+
+            if (handler != null)
+            {
+                handler(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+    }
+
+    public class NetworkGridSlotViewModel : INotifyPropertyChanged
+    {
+        private MeracPotrosnje entity;
+        private bool isSelectedForConnection;
+
+        public int SlotNumber { get; private set; }
+
+        public string SlotNumberText
+        {
+            get { return "Slot " + SlotNumber; }
+        }
+
+        public MeracPotrosnje Entity
+        {
+            get { return entity; }
+            set
+            {
+                entity = value;
+                OnPropertyChanged("Entity");
+                OnPropertyChanged("HasEntity");
+            }
+        }
+
+        public bool HasEntity
+        {
+            get { return Entity != null; }
+        }
+
+        public bool IsSelectedForConnection
+        {
+            get { return isSelectedForConnection; }
+            set
+            {
+                isSelectedForConnection = value;
+                OnPropertyChanged("IsSelectedForConnection");
+            }
+        }
+
+        public NetworkGridSlotViewModel(int slotNumber)
+        {
+            SlotNumber = slotNumber;
+            IsSelectedForConnection = false;
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        private void OnPropertyChanged(string propertyName)
+        {
+            PropertyChangedEventHandler handler = PropertyChanged;
+
+            if (handler != null)
+            {
+                handler(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+    }
+
+    public class NetworkConnectionViewModel
+    {
+        public MeracPotrosnje FirstEntity { get; private set; }
+        public MeracPotrosnje SecondEntity { get; private set; }
+
+        public NetworkConnectionViewModel(MeracPotrosnje firstEntity, MeracPotrosnje secondEntity)
+        {
+            FirstEntity = firstEntity;
+            SecondEntity = secondEntity;
         }
     }
 

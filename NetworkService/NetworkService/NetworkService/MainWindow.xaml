@@ -220,43 +220,257 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
 
-        <Style x:Key="NetworkGridDropSlotStyle" TargetType="ContentControl">
+        <Style x:Key="NetworkGridDropSlotStyle" TargetType="Border">
             <Setter Property="Margin" Value="7"/>
+            <Setter Property="Background" Value="#E9E9E9"/>
+            <Setter Property="BorderBrush" Value="#9A9A9A"/>
+            <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="AllowDrop" Value="True"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ContentControl">
-                        <Grid Background="#E9E9E9">
-                            <Rectangle Stroke="#9A9A9A"
-                                       StrokeThickness="2"
-                                       StrokeDashArray="4 4"
-                                       Fill="#E9E9E9"/>
-                            <TextBlock Text="DRAG ENTITY HERE"
-                                       Foreground="#9A9A9A"
-                                       FontSize="16"
-                                       FontWeight="SemiBold"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
         </Style>
 
         <DataTemplate x:Key="EntityTreeItemTemplate">
-            <Border Height="30"
+            <Border Height="34"
                     BorderBrush="#777777"
                     BorderThickness="0,0,0,1"
                     Background="#E4E4E4"
                     Padding="8,0">
                 <Grid>
-                    <TextBlock Text="{Binding Name}"
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="34"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Vertical"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding LastMeasure, StringFormat=Last: {0:F2} kWh}"
+                                   FontSize="11"
+                                   Foreground="#555555"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1"
+                               Text="≡"
+                               Cursor="Hand"
+                               ToolTip="Drag entity to network grid"
                                VerticalAlignment="Center"
-                               HorizontalAlignment="Center"/>
-                    <TextBlock Text="≡"
-                               VerticalAlignment="Center"
-                               HorizontalAlignment="Right"
-                               FontSize="18"/>
+                               HorizontalAlignment="Center"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               MouseLeftButtonDown="AvailableEntityDragHandle_MouseLeftButtonDown"
+                               MouseMove="DragHandle_MouseMove"
+                               MouseLeftButtonUp="DragHandle_MouseLeftButtonUp"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="NetworkGridSlotTemplate">
+            <Border Style="{StaticResource NetworkGridDropSlotStyle}"
+                    Drop="NetworkGridSlot_Drop"
+                    DragOver="NetworkGridSlot_DragOver"
+                    DragEnter="NetworkGridSlot_DragOver">
+                <Grid Background="#E9E9E9">
+                    <Rectangle Stroke="#9A9A9A"
+                               StrokeThickness="2"
+                               StrokeDashArray="4 4"
+                               Fill="#E9E9E9">
+                        <Rectangle.Style>
+                            <Style TargetType="Rectangle">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasEntity}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Rectangle.Style>
+                    </Rectangle>
+
+                    <StackPanel HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasEntity}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="DRAG ENTITY HERE"
+                                   Foreground="#9A9A9A"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding SlotNumberText}"
+                                   Foreground="#9A9A9A"
+                                   FontSize="12"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <Border Width="150"
+                            Height="104"
+                            Background="#EFEFEF"
+                            CornerRadius="2"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Padding="8"
+                            MouseLeftButtonDown="PlacedEntityCard_MouseLeftButtonDown"
+                            ToolTip="Click two placed entities to connect them with a line">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Setter Property="BorderBrush" Value="#555555"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasEntity}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsSelectedForConnection}" Value="True">
+                                        <Setter Property="BorderBrush" Value="#111111"/>
+                                        <Setter Property="BorderThickness" Value="3"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Entity.IsLastMeasureInvalid}" Value="True">
+                                        <Setter Property="BorderBrush" Value="#C62828"/>
+                                        <Setter Property="BorderThickness" Value="3"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="23"/>
+                                <RowDefinition Height="36"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="32"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="31"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.ColumnSpan="3"
+                                       Text="{Binding Entity.Name}"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       TextTrimming="CharacterEllipsis"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Top"/>
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.ColumnSpan="3"
+                                       Text="{Binding Entity.LastMeasureText}"
+                                       FontSize="22"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+
+                            <Border Grid.Row="2"
+                                    Grid.Column="0"
+                                    Width="27"
+                                    Height="24"
+                                    BorderBrush="#333333"
+                                    BorderThickness="1.4"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Bottom">
+                                <TextBlock Text="⌁"
+                                           FontSize="17"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="1"
+                                       Text="{Binding Entity.MeasureStatusText}"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#333333"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Entity.IsLastMeasureInvalid}" Value="True">
+                                                <Setter Property="Foreground" Value="#C62828"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <Border Grid.Row="2"
+                                    Grid.Column="2"
+                                    Width="27"
+                                    Height="27"
+                                    CornerRadius="14"
+                                    BorderBrush="#333333"
+                                    BorderThickness="1.4"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="#333333"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Entity.IsLastMeasureInvalid}" Value="True">
+                                                <Setter Property="BorderBrush" Value="#C62828"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding Entity.StatusIconText}"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#333333"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Entity.IsLastMeasureInvalid}" Value="True">
+                                                    <Setter Property="Foreground" Value="#C62828"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+
+                            <TextBlock Grid.Column="2"
+                                       Text="≡"
+                                       Cursor="Hand"
+                                       ToolTip="Move entity"
+                                       FontSize="20"
+                                       FontWeight="Bold"
+                                       HorizontalAlignment="Right"
+                                       VerticalAlignment="Top"
+                                       MouseLeftButtonDown="PlacedEntityDragHandle_MouseLeftButtonDown"
+                                       MouseMove="DragHandle_MouseMove"
+                                       MouseLeftButtonUp="DragHandle_MouseLeftButtonUp"/>
+
+                            <Button Grid.Row="2"
+                                    Grid.ColumnSpan="3"
+                                    Command="{Binding DataContext.NetworkDisplay.RemoveEntityFromSlotCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}"
+                                    Width="18"
+                                    Height="18"
+                                    Padding="0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    ToolTip="Remove entity from grid and return it to list">
+                                <TextBlock Text="×"
+                                           FontSize="13"
+                                           FontWeight="Bold"/>
+                            </Button>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Border>
         </DataTemplate>
@@ -488,22 +702,22 @@
                                     </Grid>
 
                                     <Grid Grid.Row="1">
-                                        <UniformGrid Rows="4"
-                                                     Columns="3"
-                                                     Margin="0">
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                            <ContentControl Style="{StaticResource NetworkGridDropSlotStyle}"/>
-                                        </UniformGrid>
+                                        <ItemsControl x:Name="NetworkGridItemsControl"
+                                                      ItemsSource="{Binding NetworkDisplay.DropSlots}"
+                                                      ItemTemplate="{StaticResource NetworkGridSlotTemplate}"
+                                                      Loaded="NetworkGridItemsControl_Loaded">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Rows="4"
+                                                                 Columns="3"
+                                                                 Margin="0"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+
+                                        <Canvas x:Name="ConnectionCanvas"
+                                                IsHitTestVisible="False"
+                                                Panel.ZIndex="10"/>
                                     </Grid>
 
                                     <Button Command="{Binding NetworkDisplay.AutoPlaceEntitiesCommand}"
@@ -521,7 +735,13 @@
                                                        Margin="0,0,4,0"/>
                                             <TextBlock Text="Auto place entities"
                                                        FontSize="16"
-                                                       VerticalAlignment="Center"/>
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,16,0"/>
+                                            <TextBlock Text="CTRL + P"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center"
+                                                       TextAlignment="Center"
+                                                       Margin="0,1,0,0"/>
                                         </StackPanel>
                                     </Button>
                                 </Grid>
@@ -547,7 +767,13 @@
                                                Margin="0,0,16,0"/>
                                     <TextBlock Text="Network Entities"
                                                FontSize="18"
-                                               VerticalAlignment="Center"/>
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,16,0"/>
+                                    <TextBlock Text="CTRL + 1"
+                                               FontSize="10"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               Margin="0,4,0,0"/>
                                 </StackPanel>
                             </TabItem.Header>
 
@@ -636,16 +862,40 @@
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="ID"
                                                                     Binding="{Binding Id}"
-                                                                    Width="80"/>
+                                                                    Width="60">
+                                                    <DataGridTextColumn.HeaderStyle>
+                                                        <Style TargetType="DataGridColumnHeader">
+                                                            <Setter Property="FontSize" Value="14"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.HeaderStyle>
+                                                </DataGridTextColumn>
                                                 <DataGridTextColumn Header="NAME"
                                                                     Binding="{Binding Name}"
-                                                                    Width="*"/>
+                                                                    Width="*">
+                                                    <DataGridTextColumn.HeaderStyle>
+                                                        <Style TargetType="DataGridColumnHeader">
+                                                            <Setter Property="FontSize" Value="14"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.HeaderStyle>
+                                                </DataGridTextColumn>
                                                 <DataGridTextColumn Header="TYPE"
                                                                     Binding="{Binding TypeName}"
-                                                                    Width="*"/>
+                                                                    Width="*">
+                                                    <DataGridTextColumn.HeaderStyle>
+                                                        <Style TargetType="DataGridColumnHeader">
+                                                            <Setter Property="FontSize" Value="14"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.HeaderStyle>
+                                                </DataGridTextColumn>
                                                 <DataGridTextColumn Header="LAST MEASURE"
                                                                     Binding="{Binding LastMeasure}"
-                                                                    Width="*"/>
+                                                                    Width="*">
+                                                    <DataGridTextColumn.HeaderStyle>
+                                                        <Style TargetType="DataGridColumnHeader">
+                                                            <Setter Property="FontSize" Value="14"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.HeaderStyle>
+                                                </DataGridTextColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
 
@@ -658,10 +908,20 @@
                                                     VerticalAlignment="Center"
                                                     MinWidth="220"
                                                     Height="31">
-                                                <TextBlock Text="Remove selected entities"
+                                                <StackPanel Orientation="Horizontal"
+                                                            VerticalAlignment="Center"
+                                                            HorizontalAlignment="Center">
+                                                    <TextBlock Text="Remove selected entities"
                                                            FontSize="16"
                                                            VerticalAlignment="Center"
-                                                           HorizontalAlignment="Center"/>
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,0,16,0"/>
+                                                    <TextBlock Text="DEL"
+                                                               FontSize="10"
+                                                               VerticalAlignment="Center"
+                                                               TextAlignment="Center"
+                                                               Margin="0,1,0,0"/>
+                                                </StackPanel>
                                             </Button>
                                         </Border>
                                     </Grid>
@@ -820,13 +1080,19 @@
                                 <StackPanel Orientation="Horizontal"
                                             VerticalAlignment="Center"
                                             HorizontalAlignment="Center">
-                                    <TextBlock Text="Network Graph"
-                                               FontSize="18"
-                                               VerticalAlignment="Center"/>
                                     <TextBlock Text="⌁"
                                                FontSize="16"
                                                VerticalAlignment="Center"
-                                               Margin="80,0,0,0"/>
+                                               Margin="0,0,16,0"/>
+                                    <TextBlock Text="Network Graph"
+                                               FontSize="18"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,16,0"/>
+                                    <TextBlock  Text="CTRL + 2"
+                                                FontSize="10"
+                                                VerticalAlignment="Center"
+                                                TextAlignment="Center"
+                                                Margin="0,4,0,0"/>
                                 </StackPanel>
                             </TabItem.Header>
 

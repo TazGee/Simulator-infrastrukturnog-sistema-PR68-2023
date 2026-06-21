@@ -9,6 +9,7 @@ namespace NetworkService.Models
         private string name;
         private EntityTypeInfo type;
         private double lastMeasure;
+        private bool hasMeasurement;
 
         public int Id
         {
@@ -89,6 +90,75 @@ namespace NetworkService.Models
             {
                 lastMeasure = value;
                 OnPropertyChanged("LastMeasure");
+                OnPropertyChanged("LastMeasureText");
+                OnPropertyChanged("IsLastMeasureValid");
+                OnPropertyChanged("IsLastMeasureInvalid");
+                OnPropertyChanged("MeasureStatusText");
+                OnPropertyChanged("StatusIconText");
+            }
+        }
+
+        public bool HasMeasurement
+        {
+            get { return hasMeasurement; }
+            set
+            {
+                hasMeasurement = value;
+                OnPropertyChanged("HasMeasurement");
+                OnPropertyChanged("LastMeasureText");
+                OnPropertyChanged("IsLastMeasureValid");
+                OnPropertyChanged("IsLastMeasureInvalid");
+                OnPropertyChanged("MeasureStatusText");
+                OnPropertyChanged("StatusIconText");
+            }
+        }
+
+        public string LastMeasureText
+        {
+            get
+            {
+                if (!HasMeasurement)
+                {
+                    return "-- kWh";
+                }
+
+                return LastMeasure.ToString("F2") + " kWh";
+            }
+        }
+
+        public bool IsLastMeasureValid
+        {
+            get { return HasMeasurement && LastMeasure >= 0.34 && LastMeasure <= 2.73; }
+        }
+
+        public bool IsLastMeasureInvalid
+        {
+            get { return HasMeasurement && !IsLastMeasureValid; }
+        }
+
+        public string MeasureStatusText
+        {
+            get
+            {
+                if (!HasMeasurement)
+                {
+                    return "NO DATA";
+                }
+
+                return IsLastMeasureValid ? "VALID" : "INVALID";
+            }
+        }
+
+        public string StatusIconText
+        {
+            get
+            {
+                if (!HasMeasurement)
+                {
+                    return "?";
+                }
+
+                return IsLastMeasureValid ? "✓" : "!";
             }
         }
 
@@ -98,6 +168,7 @@ namespace NetworkService.Models
             name = string.Empty;
             type = new EntityTypeInfo("Interval Meter", "Images/interval-meter.png", EntityType.INTERVAL_METER);
             lastMeasure = 0;
+            hasMeasurement = false;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
