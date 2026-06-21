@@ -33,6 +33,8 @@ namespace NetworkService.ViewModel
         public ICommand ToggleFullscreenCommand { get; private set; }
         public ICommand CloseApplicationCommand { get; private set; }
         public ICommand OpenUsageLogCommand { get; private set; }
+        public ICommand OpenEntitiesTabCommand { get; private set; }
+        public ICommand OpenGraphTabCommand { get; private set; }
 
         public int SelectedRightTabIndex
         {
@@ -54,6 +56,8 @@ namespace NetworkService.ViewModel
             ToggleFullscreenCommand = new RelayCommand(_ => ToggleFullscreen());
             CloseApplicationCommand = new RelayCommand(_ => Application.Current.Shutdown());
             OpenUsageLogCommand = new RelayCommand(_ => OpenUsageLog());
+            OpenEntitiesTabCommand = new RelayCommand(_ => SelectedRightTabIndex = 0);
+            OpenGraphTabCommand = new RelayCommand(_ => SelectedRightTabIndex = 1);
 
             createListener();
         }
@@ -119,13 +123,15 @@ namespace NetworkService.ViewModel
                     stream.Write(data, 0, data.Length);
                     return;
                 }
-
-                int entityIndex;
-                double measure;
-
-                if (TryProcessMeasurementMessage(incoming, out entityIndex, out measure))
+                else
                 {
-                    UpdateEntityMeasurement(entityIndex, measure);
+                    int entityIndex;
+                    double measure;
+
+                    if (TryProcessMeasurementMessage(incoming, out entityIndex, out measure))
+                    {
+                        UpdateEntityMeasurement(entityIndex, measure);
+                    }
                 }
             }
         }

@@ -17,6 +17,13 @@
         WindowStyle="None"
         ResizeMode="NoResize">
 
+    <Window.InputBindings>
+        <KeyBinding Key="D1" Modifiers="Control" Command="{Binding OpenEntitiesTabCommand}"/>
+        <KeyBinding Key="D2" Modifiers="Control" Command="{Binding OpenGraphTabCommand}"/>
+        <KeyBinding Key="P" Modifiers="Control" Command="{Binding NetworkDisplay.AutoPlaceEntitiesCommand}"/>
+        <KeyBinding Key="Delete" Command="{Binding NetworkEntities.RemoveSelectedEntityCommand}"/>
+    </Window.InputBindings>
+
     <Window.Resources>
         <SolidColorBrush x:Key="BackgroundBrush" Color="#E8E8E8"/>
         <SolidColorBrush x:Key="PanelBrush" Color="#EEEEEE"/>
@@ -222,7 +229,7 @@
 
         <Style x:Key="NetworkGridDropSlotStyle" TargetType="Border">
             <Setter Property="Margin" Value="7"/>
-            <Setter Property="Background" Value="#E9E9E9"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="#9A9A9A"/>
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="AllowDrop" Value="True"/>
@@ -272,11 +279,11 @@
                     Drop="NetworkGridSlot_Drop"
                     DragOver="NetworkGridSlot_DragOver"
                     DragEnter="NetworkGridSlot_DragOver">
-                <Grid Background="#E9E9E9">
+                <Grid Background="Transparent">
                     <Rectangle Stroke="#9A9A9A"
                                StrokeThickness="2"
                                StrokeDashArray="4 4"
-                               Fill="#E9E9E9">
+                               Fill="Transparent">
                         <Rectangle.Style>
                             <Style TargetType="Rectangle">
                                 <Setter Property="Visibility" Value="Visible"/>
@@ -316,6 +323,7 @@
                     <Border Width="150"
                             Height="104"
                             Background="#EFEFEF"
+                            Panel.ZIndex="5"
                             CornerRadius="2"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
@@ -702,10 +710,15 @@
                                     </Grid>
 
                                     <Grid Grid.Row="1">
+                                        <Canvas x:Name="ConnectionCanvas"
+                                                IsHitTestVisible="False"
+                                                Panel.ZIndex="0"/>
+
                                         <ItemsControl x:Name="NetworkGridItemsControl"
                                                       ItemsSource="{Binding NetworkDisplay.DropSlots}"
                                                       ItemTemplate="{StaticResource NetworkGridSlotTemplate}"
-                                                      Loaded="NetworkGridItemsControl_Loaded">
+                                                      Loaded="NetworkGridItemsControl_Loaded"
+                                                      Panel.ZIndex="1">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
                                                     <UniformGrid Rows="4"
@@ -714,10 +727,6 @@
                                                 </ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                         </ItemsControl>
-
-                                        <Canvas x:Name="ConnectionCanvas"
-                                                IsHitTestVisible="False"
-                                                Panel.ZIndex="10"/>
                                     </Grid>
 
                                     <Button Command="{Binding NetworkDisplay.AutoPlaceEntitiesCommand}"
