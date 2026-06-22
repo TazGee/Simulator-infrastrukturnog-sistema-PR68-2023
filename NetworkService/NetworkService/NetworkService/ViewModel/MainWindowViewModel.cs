@@ -13,7 +13,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace NetworkService.ViewModel
 {
@@ -49,7 +51,7 @@ namespace NetworkService.ViewModel
         public MainWindowViewModel()
         {
             NetworkEntities = new NetworkEntitiesViewModel(this);
-            NetworkDisplay = new NetworkDisplayViewModel(NetworkEntities.Entities);
+            NetworkDisplay = new NetworkDisplayViewModel(this, NetworkEntities.Entities);
             MeasurementGraph = new MeasurementGraphViewModel(NetworkEntities.Entities);
 
             BackCommand = new RelayCommand(_ => { });
@@ -81,6 +83,21 @@ namespace NetworkService.ViewModel
             LogWindow logWindow = new LogWindow();
             logWindow.Owner = Application.Current.MainWindow;
             logWindow.ShowDialog();
+        }
+
+        public bool ShowPrompt(string title, string questionText)
+        {
+            PromptBoxWindow promptBoxWindow = new PromptBoxWindow(title, questionText);
+            promptBoxWindow.Owner = Application.Current.MainWindow;
+            bool? result = promptBoxWindow.ShowDialog();
+            return result == true;
+        }
+
+        public void ShowMessage(string title, string messageText)
+        {
+            MessageBoxWindow messageBoxWindow = new MessageBoxWindow(title, messageText, "OK");
+            messageBoxWindow.Owner = Application.Current.MainWindow;
+            messageBoxWindow.ShowDialog();
         }
 
         private void createListener()
@@ -123,15 +140,13 @@ namespace NetworkService.ViewModel
                     stream.Write(data, 0, data.Length);
                     return;
                 }
-                else
-                {
-                    int entityIndex;
-                    double measure;
 
-                    if (TryProcessMeasurementMessage(incoming, out entityIndex, out measure))
-                    {
-                        UpdateEntityMeasurement(entityIndex, measure);
-                    }
+                int entityIndex;
+                double measure;
+
+                if (TryProcessMeasurementMessage(incoming, out entityIndex, out measure))
+                {
+                    UpdateEntityMeasurement(entityIndex, measure);
                 }
             }
         }
@@ -197,6 +212,7 @@ namespace NetworkService.ViewModel
                 entity.HasMeasurement = true;
                 entity.LastMeasure = measure;
                 MeasurementGraph.AddMeasurement(entity, measure, measurementTime);
+                NetworkEntities.RefreshFilter();
             });
 
             WriteMeasurementLog(entityIndex, entity, measure, measurementTime);
@@ -256,6 +272,7 @@ namespace NetworkService.ViewModel
             }
 
             NetworkEntities.Entities.Add(entity);
+            NetworkEntities.RefreshFilter();
             NetworkDisplay.RefreshAvailableEntities(NetworkEntities.Entities);
 
             if (MeasurementGraph.SelectedEntity == null)
@@ -280,7 +297,9 @@ namespace NetworkService.ViewModel
 
             NetworkDisplay.RemoveEntityFromGrid(entity);
             NetworkEntities.Entities.Remove(entity);
+            NetworkEntities.RefreshFilter();
             NetworkDisplay.RefreshAvailableEntities(NetworkEntities.Entities);
+            MeasurementGraph.RemoveEntityHistory(entity);
 
             if (MeasurementGraph.SelectedEntity == entity)
             {
@@ -360,10 +379,11 @@ namespace NetworkService.ViewModel
         private readonly MainWindowViewModel parent;
         private MeracPotrosnje selectedEntity;
         private string selectedEntityType;
-        private string selectedSavedFilter;
+        private FilterPresetViewModel selectedSavedFilter;
 
         public ObservableCollection<MeracPotrosnje> Entities { get; private set; }
-        public ObservableCollection<string> SavedFilters { get; private set; }
+        public ICollectionView FilteredEntities { get; private set; }
+        public ObservableCollection<FilterPresetViewModel> SavedFilters { get; private set; }
         public FilterViewModel Filter { get; private set; }
 
         public ICommand OpenAddEntityDialogCommand { get; private set; }
@@ -391,13 +411,18 @@ namespace NetworkService.ViewModel
             }
         }
 
-        public string SelectedSavedFilter
+        public FilterPresetViewModel SelectedSavedFilter
         {
             get { return selectedSavedFilter; }
             set
             {
                 selectedSavedFilter = value;
                 OnPropertyChanged("SelectedSavedFilter");
+
+                if (selectedSavedFilter != null)
+                {
+                    ApplyPreset(selectedSavedFilter);
+                }
             }
         }
 
@@ -405,19 +430,118 @@ namespace NetworkService.ViewModel
         {
             this.parent = parent;
             Entities = new ObservableCollection<MeracPotrosnje>();
-            SavedFilters = new ObservableCollection<string>();
+            SavedFilters = new ObservableCollection<FilterPresetViewModel>();
             Filter = new FilterViewModel();
+            Filter.SelectedType = "All";
             SelectedEntityType = "Interval Meter";
+
+            FilteredEntities = CollectionViewSource.GetDefaultView(Entities);
+            FilteredEntities.Filter = FilterEntity;
+            Filter.PropertyChanged += Filter_PropertyChanged;
 
             OpenAddEntityDialogCommand = new RelayCommand(_ => parent.AddEntityFromSelectedType(SelectedEntityType));
             RemoveSelectedEntityCommand = new RelayCommand(_ => RemoveSelectedEntity());
             SaveFilterCommand = new RelayCommand(_ => SaveCurrentFilter());
-            ClearFiltersCommand = new RelayCommand(_ => ClearFilters());
+            ClearFiltersCommand = new RelayCommand(_ => ClearFiltersWithPrompt());
+        }
+
+        private void Filter_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            RefreshFilter();
+        }
+
+        public void RefreshFilter()
+        {
+            if (FilteredEntities != null)
+            {
+                FilteredEntities.Refresh();
+            }
+        }
+
+        private bool FilterEntity(object item)
+        {
+            MeracPotrosnje entity = item as MeracPotrosnje;
+
+            if (entity == null)
+            {
+                return false;
+            }
+
+            bool hasTypeFilter = !string.IsNullOrWhiteSpace(Filter.SelectedType) && Filter.SelectedType != "All";
+            bool hasIdFilter = HasValidIdFilter();
+
+            if (!hasTypeFilter && !hasIdFilter)
+            {
+                return true;
+            }
+
+            bool typeMatches = !hasTypeFilter || entity.TypeName == Filter.SelectedType;
+            bool idMatches = !hasIdFilter || EntityIdMatchesFilter(entity.Id);
+
+            if (hasTypeFilter && hasIdFilter)
+            {
+                if (Filter.CombineTypeAndId)
+                {
+                    return typeMatches && idMatches;
+                }
+
+                return typeMatches || idMatches;
+            }
+
+            if (hasTypeFilter)
+            {
+                return typeMatches;
+            }
+
+            return idMatches;
+        }
+
+        private bool HasValidIdFilter()
+        {
+            int idValue;
+            bool hasOperator = Filter.IsLessThan || Filter.IsEqual || Filter.IsGreaterThan;
+            bool hasValidValue = int.TryParse(Filter.IdValue, out idValue);
+            return hasOperator && hasValidValue;
+        }
+
+        private bool EntityIdMatchesFilter(int entityId)
+        {
+            int idValue;
+
+            if (!int.TryParse(Filter.IdValue, out idValue))
+            {
+                return true;
+            }
+
+            if (Filter.IsLessThan)
+            {
+                return entityId < idValue;
+            }
+
+            if (Filter.IsEqual)
+            {
+                return entityId == idValue;
+            }
+
+            if (Filter.IsGreaterThan)
+            {
+                return entityId > idValue;
+            }
+
+            return true;
         }
 
         private void RemoveSelectedEntity()
         {
             if (SelectedEntity == null)
+            {
+                return;
+            }
+
+            string questionText = "Do you want to delete entity \"" + SelectedEntity.Name + "\" from the table?\n" +
+                                  "All its grid position and all connected lines will also be removed.";
+
+            if (!parent.ShowPrompt("Delete entity", questionText))
             {
                 return;
             }
@@ -428,24 +552,53 @@ namespace NetworkService.ViewModel
 
         private void SaveCurrentFilter()
         {
-            string preset = "Type: " + (Filter.SelectedType ?? "Any") + ", ID: " + (Filter.IdValue ?? "Any");
+            FilterPresetViewModel preset = new FilterPresetViewModel(Filter);
+            FilterPresetViewModel existingPreset = SavedFilters.FirstOrDefault(item => item.Name == preset.Name);
 
-            if (!SavedFilters.Contains(preset))
+            if (existingPreset == null)
             {
                 SavedFilters.Add(preset);
+                SelectedSavedFilter = preset;
+            }
+            else
+            {
+                SelectedSavedFilter = existingPreset;
             }
 
-            SelectedSavedFilter = preset;
+            parent.ShowMessage("Filter preset saved", "Filter preset has been saved and can now be selected from the Filter preset dropdown.");
+        }
+
+        private void ClearFiltersWithPrompt()
+        {
+            if (!parent.ShowPrompt("Clear filters", "Do you want to clear all active filters and show all entities again?"))
+            {
+                return;
+            }
+
+            ClearFilters();
         }
 
         private void ClearFilters()
         {
-            Filter.SelectedType = null;
+            Filter.SelectedType = "All";
             Filter.IdValue = string.Empty;
             Filter.IsLessThan = false;
             Filter.IsEqual = false;
             Filter.IsGreaterThan = false;
             Filter.CombineTypeAndId = false;
+            SelectedSavedFilter = null;
+            RefreshFilter();
+        }
+
+        private void ApplyPreset(FilterPresetViewModel preset)
+        {
+            Filter.SelectedType = preset.SelectedType;
+            Filter.IdValue = preset.IdValue;
+            Filter.IsLessThan = preset.IsLessThan;
+            Filter.IsEqual = preset.IsEqual;
+            Filter.IsGreaterThan = preset.IsGreaterThan;
+            Filter.CombineTypeAndId = preset.CombineTypeAndId;
+            RefreshFilter();
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -458,6 +611,53 @@ namespace NetworkService.ViewModel
             {
                 handler(this, new PropertyChangedEventArgs(propertyName));
             }
+        }
+    }
+
+    public class FilterPresetViewModel
+    {
+        public string Name { get; private set; }
+        public string SelectedType { get; private set; }
+        public string IdValue { get; private set; }
+        public bool IsLessThan { get; private set; }
+        public bool IsEqual { get; private set; }
+        public bool IsGreaterThan { get; private set; }
+        public bool CombineTypeAndId { get; private set; }
+
+        public FilterPresetViewModel(FilterViewModel filter)
+        {
+            SelectedType = string.IsNullOrWhiteSpace(filter.SelectedType) ? "All" : filter.SelectedType;
+            IdValue = filter.IdValue ?? string.Empty;
+            IsLessThan = filter.IsLessThan;
+            IsEqual = filter.IsEqual;
+            IsGreaterThan = filter.IsGreaterThan;
+            CombineTypeAndId = filter.CombineTypeAndId;
+            Name = BuildName();
+        }
+
+        private string BuildName()
+        {
+            string typePart = "Type: " + SelectedType;
+            string idPart = "ID: Any";
+
+            if (!string.IsNullOrWhiteSpace(IdValue))
+            {
+                if (IsLessThan)
+                {
+                    idPart = "ID < " + IdValue;
+                }
+                else if (IsEqual)
+                {
+                    idPart = "ID = " + IdValue;
+                }
+                else if (IsGreaterThan)
+                {
+                    idPart = "ID > " + IdValue;
+                }
+            }
+
+            string joinPart = CombineTypeAndId ? "AND" : "OR";
+            return typePart + " | " + idPart + " | " + joinPart;
         }
     }
 
@@ -532,6 +732,7 @@ namespace NetworkService.ViewModel
 
         public FilterViewModel()
         {
+            SelectedType = "All";
             IdValue = string.Empty;
         }
 
@@ -550,6 +751,7 @@ namespace NetworkService.ViewModel
 
     public class NetworkDisplayViewModel : INotifyPropertyChanged
     {
+        private readonly MainWindowViewModel parent;
         private readonly ObservableCollection<MeracPotrosnje> allEntities;
         private NetworkGridSlotViewModel selectedConnectionStartSlot;
 
@@ -559,8 +761,9 @@ namespace NetworkService.ViewModel
         public ICommand AutoPlaceEntitiesCommand { get; private set; }
         public ICommand RemoveEntityFromSlotCommand { get; private set; }
 
-        public NetworkDisplayViewModel(ObservableCollection<MeracPotrosnje> allEntities)
+        public NetworkDisplayViewModel(MainWindowViewModel parent, ObservableCollection<MeracPotrosnje> allEntities)
         {
+            this.parent = parent;
             this.allEntities = allEntities;
             AvailableEntityTypes = new ObservableCollection<EntityTypeGroupViewModel>();
             DropSlots = new ObservableCollection<NetworkGridSlotViewModel>();
@@ -574,7 +777,7 @@ namespace NetworkService.ViewModel
                 DropSlots.Add(new NetworkGridSlotViewModel(i));
             }
 
-            AutoPlaceEntitiesCommand = new RelayCommand(_ => AutoPlaceEntities());
+            AutoPlaceEntitiesCommand = new RelayCommand(_ => AutoPlaceEntitiesWithPrompt());
             RemoveEntityFromSlotCommand = new RelayCommand(parameter => RemoveEntityFromSlot(parameter as NetworkGridSlotViewModel));
         }
 
@@ -744,6 +947,16 @@ namespace NetworkService.ViewModel
             return DropSlots.Any(slot => slot.Entity == entity);
         }
 
+        private void AutoPlaceEntitiesWithPrompt()
+        {
+            if (!parent.ShowPrompt("Auto place entities", "Do you want to place all currently unplaced entities into free network grid slots?"))
+            {
+                return;
+            }
+
+            AutoPlaceEntities();
+        }
+
         private void AutoPlaceEntities()
         {
             List<MeracPotrosnje> availableEntities = allEntities
@@ -863,6 +1076,7 @@ namespace NetworkService.ViewModel
 
     public class MeasurementGraphViewModel : INotifyPropertyChanged
     {
+        private readonly Dictionary<MeracPotrosnje, List<MeasurementHistoryItem>> measurementHistory;
         private MeracPotrosnje selectedEntity;
 
         public ObservableCollection<MeracPotrosnje> Entities { get; private set; }
@@ -875,6 +1089,7 @@ namespace NetworkService.ViewModel
             {
                 selectedEntity = value;
                 OnPropertyChanged("SelectedEntity");
+                RefreshGraphPoints();
             }
         }
 
@@ -882,13 +1097,72 @@ namespace NetworkService.ViewModel
         {
             Entities = entities;
             LastMeasurements = new ObservableCollection<GraphPointViewModel>();
+            measurementHistory = new Dictionary<MeracPotrosnje, List<MeasurementHistoryItem>>();
         }
 
         public void AddMeasurement(MeracPotrosnje entity, double measure, DateTime time)
         {
+            if (entity == null)
+            {
+                return;
+            }
+
+            if (!measurementHistory.ContainsKey(entity))
+            {
+                measurementHistory[entity] = new List<MeasurementHistoryItem>();
+            }
+
+            measurementHistory[entity].Add(new MeasurementHistoryItem(measure, time));
+
+            if (measurementHistory[entity].Count > 50)
+            {
+                measurementHistory[entity].RemoveAt(0);
+            }
+
             if (SelectedEntity == null)
             {
                 SelectedEntity = entity;
+            }
+
+            if (SelectedEntity == entity)
+            {
+                RefreshGraphPoints();
+            }
+        }
+
+        public void RemoveEntityHistory(MeracPotrosnje entity)
+        {
+            if (entity == null)
+            {
+                return;
+            }
+
+            if (measurementHistory.ContainsKey(entity))
+            {
+                measurementHistory.Remove(entity);
+            }
+
+            RefreshGraphPoints();
+        }
+
+        private void RefreshGraphPoints()
+        {
+            LastMeasurements.Clear();
+
+            if (SelectedEntity == null || !measurementHistory.ContainsKey(SelectedEntity))
+            {
+                return;
+            }
+
+            List<MeasurementHistoryItem> lastItems = measurementHistory[SelectedEntity]
+                .Skip(Math.Max(0, measurementHistory[SelectedEntity].Count - 5))
+                .ToList();
+
+            double[] xPositions = new double[] { 52, 158, 264, 370, 476 };
+
+            for (int i = 0; i < lastItems.Count; i++)
+            {
+                LastMeasurements.Add(new GraphPointViewModel(lastItems[i], xPositions[i]));
             }
         }
 
@@ -905,8 +1179,73 @@ namespace NetworkService.ViewModel
         }
     }
 
+    public class MeasurementHistoryItem
+    {
+        public double Value { get; private set; }
+        public DateTime Time { get; private set; }
+
+        public MeasurementHistoryItem(double value, DateTime time)
+        {
+            Value = value;
+            Time = time;
+        }
+    }
+
     public class GraphPointViewModel
     {
+        private const double CenterLineY = 150;
+
+        public double X { get; private set; }
+        public double CenterY { get; private set; }
+        public double CircleSize { get; private set; }
+        public double CircleLeft { get; private set; }
+        public double CircleTop { get; private set; }
+        public double LabelLeft { get; private set; }
+        public double LabelTop { get; private set; }
+        public double TimeLeft { get; private set; }
+        public double DateLeft { get; private set; }
+        public string ValueText { get; private set; }
+        public string TimeText { get; private set; }
+        public string DateText { get; private set; }
+        public Brush CircleFill { get; private set; }
+
+        public GraphPointViewModel(MeasurementHistoryItem item, double x)
+        {
+            X = x;
+            CenterY = CenterLineY;
+
+            double radius = Clamp(7 + item.Value * 8.5, 7, 42);
+            CircleSize = radius * 2;
+            CircleLeft = X - radius;
+            CircleTop = CenterY - radius;
+            LabelLeft = X - 30;
+            LabelTop = CircleTop - 24;
+            TimeLeft = X - 31;
+            DateLeft = X - 35;
+            ValueText = item.Value.ToString("F2", CultureInfo.InvariantCulture) + "kWh";
+            TimeText = item.Time.ToString("HH:mm:ss");
+            DateText = item.Time.ToString("dd.MM.yyyy");
+
+            bool isValid = item.Value >= 0.34 && item.Value <= 2.73;
+            CircleFill = isValid
+                ? new SolidColorBrush(Color.FromRgb(229, 229, 229))
+                : new SolidColorBrush(Color.FromRgb(145, 145, 145));
+        }
+
+        private static double Clamp(double value, double minimum, double maximum)
+        {
+            if (value < minimum)
+            {
+                return minimum;
+            }
+
+            if (value > maximum)
+            {
+                return maximum;
+            }
+
+            return value;
+        }
     }
 
     public class RelayCommand : ICommand

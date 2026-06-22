@@ -500,12 +500,12 @@
         <DataTemplate x:Key="GraphPointTemplate">
             <Canvas Width="1" Height="1">
                 <Line X1="{Binding X}"
-                      Y1="250"
+                      Y1="305"
                       X2="{Binding X}"
                       Y2="{Binding CenterY}"
-                      Stroke="#999999"
+                      Stroke="#9A9A9A"
                       StrokeThickness="1"
-                      StrokeDashArray="5 5"/>
+                      StrokeDashArray="4 4"/>
                 <Ellipse Width="{Binding CircleSize}"
                          Height="{Binding CircleSize}"
                          Fill="{Binding CircleFill}"
@@ -520,11 +520,11 @@
                 <TextBlock Text="{Binding TimeText}"
                            FontSize="14"
                            Canvas.Left="{Binding TimeLeft}"
-                           Canvas.Top="260"/>
+                           Canvas.Top="314"/>
                 <TextBlock Text="{Binding DateText}"
                            FontSize="14"
                            Canvas.Left="{Binding DateLeft}"
-                           Canvas.Top="278"/>
+                           Canvas.Top="333"/>
             </Canvas>
         </DataTemplate>
     </Window.Resources>
@@ -866,7 +866,7 @@
                                             <RowDefinition Height="44"/>
                                         </Grid.RowDefinitions>
 
-                                        <DataGrid ItemsSource="{Binding NetworkEntities.Entities}"
+                                        <DataGrid ItemsSource="{Binding NetworkEntities.FilteredEntities}"
                                                   SelectedItem="{Binding NetworkEntities.SelectedEntity}">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="ID"
@@ -1041,7 +1041,7 @@
                                             <ComboBox Grid.Column="1"
                                                       ItemsSource="{Binding NetworkEntities.SavedFilters}"
                                                       DisplayMemberPath="Name"
-                                                      SelectedItem="{Binding NetworkEntities.SelectedSavedFilter}"/>
+                                                      SelectedItem="{Binding NetworkEntities.SelectedSavedFilter, Mode=TwoWay}"/>
                                         </Grid>
 
                                         <Grid Grid.Row="4">
@@ -1149,37 +1149,40 @@
                                            VerticalAlignment="Center"/>
 
                                 <Border Grid.Row="3" Background="Transparent">
-                                    <Canvas>
+                                    <Canvas Width="525"
+                                            Height="365"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top">
                                         <Line X1="0"
                                               Y1="305"
-                                              X2="500"
+                                              X2="515"
                                               Y2="305"
                                               Stroke="#222222"
                                               StrokeThickness="2"/>
-                                        <Line X1="500"
+                                        <Line X1="515"
                                               Y1="305"
-                                              X2="490"
+                                              X2="505"
                                               Y2="297"
                                               Stroke="#222222"
                                               StrokeThickness="1"/>
-                                        <Line X1="500"
+                                        <Line X1="515"
                                               Y1="305"
-                                              X2="490"
+                                              X2="505"
                                               Y2="313"
                                               Stroke="#222222"
                                               StrokeThickness="1"/>
                                         <TextBlock Text="time"
-                                                   Canvas.Left="472"
+                                                   Canvas.Left="485"
                                                    Canvas.Top="276"
                                                    Foreground="#555555"
                                                    FontSize="14"/>
                                         <Line X1="0"
-                                              Y1="125"
-                                              X2="500"
-                                              Y2="125"
-                                              Stroke="#999999"
+                                              Y1="150"
+                                              X2="515"
+                                              Y2="150"
+                                              Stroke="#9A9A9A"
                                               StrokeThickness="1"
-                                              StrokeDashArray="5 5"/>
+                                              StrokeDashArray="3 5"/>
 
                                         <ItemsControl ItemsSource="{Binding MeasurementGraph.LastMeasurements}"
                                                       ItemTemplate="{StaticResource GraphPointTemplate}">

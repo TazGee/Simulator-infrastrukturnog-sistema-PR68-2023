@@ -389,19 +389,21 @@ namespace NetworkService
 
         private Point GetConnectionMarkerPoint(List<Point> points)
         {
+            if (points.Count >= 3)
+            {
+                return points[1];
+            }
+
             if (points.Count == 2)
             {
-                return new Point((points[0].X + points[1].X) / 2, (points[0].Y + points[1].Y) / 2);
+                Point start = points[0];
+                Point end = points[1];
+                double markerX = start.X + (end.X - start.X) * 0.18;
+                double markerY = start.Y + (end.Y - start.Y) * 0.18;
+                return new Point(markerX, markerY);
             }
 
-            if (points.Count >= 4)
-            {
-                Point first = points[1];
-                Point second = points[2];
-                return new Point((first.X + second.X) / 2, (first.Y + second.Y) / 2);
-            }
-
-            return points[points.Count / 2];
+            return points[0];
         }
 
         private SolidColorBrush GetConnectionBrush(int connectionIndex)
