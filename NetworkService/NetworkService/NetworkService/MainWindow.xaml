@@ -237,18 +237,27 @@
         </Style>
 
         <DataTemplate x:Key="EntityTreeItemTemplate">
-            <Border Height="34"
+            <Border Height="42"
                     BorderBrush="#777777"
                     BorderThickness="0,0,0,1"
                     Background="#E4E4E4"
-                    Padding="8,0">
+                    Padding="6,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="32"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="34"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Orientation="Vertical"
+                    <Image Source="{Binding ImagePath}"
+                           Width="24"
+                           Height="24"
+                           Stretch="Uniform"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="1"
+                                Orientation="Vertical"
                                 VerticalAlignment="Center">
                         <TextBlock Text="{Binding Name}"
                                    FontSize="14"
@@ -259,7 +268,7 @@
                                    Foreground="#555555"/>
                     </StackPanel>
 
-                    <TextBlock Grid.Column="1"
+                    <TextBlock Grid.Column="2"
                                Text="≡"
                                Cursor="Hand"
                                ToolTip="Drag entity to network grid"
@@ -280,6 +289,7 @@
                     DragOver="NetworkGridSlot_DragOver"
                     DragEnter="NetworkGridSlot_DragOver">
                 <Grid Background="Transparent">
+                    <Canvas Background="Transparent" IsHitTestVisible="False"/>
                     <Rectangle Stroke="#9A9A9A"
                                StrokeThickness="2"
                                StrokeDashArray="4 4"
@@ -363,6 +373,13 @@
                                 <ColumnDefinition Width="31"/>
                             </Grid.ColumnDefinitions>
 
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Entity.IdText}"
+                                       FontSize="10"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Top"/>
+
                             <TextBlock Grid.ColumnSpan="3"
                                        Text="{Binding Entity.Name}"
                                        FontSize="14"
@@ -381,17 +398,15 @@
 
                             <Border Grid.Row="2"
                                     Grid.Column="0"
-                                    Width="27"
-                                    Height="24"
+                                    Width="29"
+                                    Height="25"
                                     BorderBrush="#333333"
                                     BorderThickness="1.4"
                                     HorizontalAlignment="Left"
-                                    VerticalAlignment="Bottom">
-                                <TextBlock Text="⌁"
-                                           FontSize="17"
-                                           FontWeight="Bold"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center"/>
+                                    VerticalAlignment="Bottom"
+                                    Padding="2">
+                                <Image Source="{Binding Entity.ImagePath}"
+                                       Stretch="Uniform"/>
                             </Border>
 
                             <TextBlock Grid.Row="2"
@@ -483,19 +498,12 @@
             </Border>
         </DataTemplate>
 
-        <DataTemplate x:Key="EntityTypeTemplate">
-            <Expander IsExpanded="{Binding IsExpanded}"
-                      Background="#CFCFCF"
-                      BorderBrush="#777777"
-                      BorderThickness="1"
-                      Margin="0,0,0,12">
-                <Expander.Header>
-                    <TextBlock Text="{Binding Name}" FontSize="17"/>
-                </Expander.Header>
-                <ItemsControl ItemsSource="{Binding Entities}"
-                              ItemTemplate="{StaticResource EntityTreeItemTemplate}"/>
-            </Expander>
-        </DataTemplate>
+        <HierarchicalDataTemplate x:Key="EntityTypeTreeTemplate" ItemsSource="{Binding Entities}" ItemTemplate="{StaticResource EntityTreeItemTemplate}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="▸" FontSize="13" Margin="0,0,6,0"/>
+                <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold"/>
+            </StackPanel>
+        </HierarchicalDataTemplate>
 
         <DataTemplate x:Key="GraphPointTemplate">
             <Canvas Width="1" Height="1">
@@ -678,11 +686,14 @@
                                                    VerticalAlignment="Center"/>
                                     </StackPanel>
 
-                                    <ScrollViewer Grid.Row="1"
-                                                  VerticalScrollBarVisibility="Auto">
-                                        <ItemsControl ItemsSource="{Binding NetworkDisplay.AvailableEntityTypes}"
-                                                      ItemTemplate="{StaticResource EntityTypeTemplate}"/>
-                                    </ScrollViewer>
+                                    <TreeView Grid.Row="1"
+                                              ItemsSource="{Binding NetworkDisplay.AvailableEntityTypes}"
+                                              ItemTemplate="{StaticResource EntityTypeTreeTemplate}"
+                                              Background="#E9E9E9"
+                                              BorderThickness="0"
+                                              FontSize="15"
+                                              Padding="0"
+                                              ScrollViewer.VerticalScrollBarVisibility="Auto"/>
                                 </Grid>
                             </Border>
 
@@ -1013,9 +1024,17 @@
                                                 </RadioButton>
                                             </StackPanel>
 
-                                            <TextBox Grid.Column="5"
-                                                     Text="{Binding NetworkEntities.Filter.IdValue, UpdateSourceTrigger=PropertyChanged}"
-                                                     HorizontalAlignment="Stretch"/>
+                                            <StackPanel Grid.Column="5" VerticalAlignment="Center">
+                                                <TextBox Text="{Binding NetworkEntities.Filter.IdValue, UpdateSourceTrigger=PropertyChanged}"
+                                                         HorizontalAlignment="Stretch"
+                                                         Height="24"/>
+                                                <TextBlock Text="{Binding NetworkEntities.Filter.IdValidationMessage}"
+                                                           Foreground="#C62828"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap"
+                                                           Margin="0,1,0,0"/>
+                                            </StackPanel>
                                         </Grid>
 
                                         <CheckBox Grid.Row="2"

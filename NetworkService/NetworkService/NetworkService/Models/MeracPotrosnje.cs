@@ -18,7 +18,13 @@ namespace NetworkService.Models
             {
                 id = value;
                 OnPropertyChanged("Id");
+                OnPropertyChanged("IdText");
             }
+        }
+
+        public string IdText
+        {
+            get { return "ID " + Id; }
         }
 
         public string Name

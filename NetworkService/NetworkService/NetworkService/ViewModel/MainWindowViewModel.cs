@@ -53,8 +53,9 @@ namespace NetworkService.ViewModel
             NetworkEntities = new NetworkEntitiesViewModel(this);
             NetworkDisplay = new NetworkDisplayViewModel(this, NetworkEntities.Entities);
             MeasurementGraph = new MeasurementGraphViewModel(NetworkEntities.Entities);
+            InitializeDefaultEntities();
 
-            BackCommand = new RelayCommand(_ => { });
+            BackCommand = new RelayCommand(_ => SelectedRightTabIndex = 0);
             ToggleFullscreenCommand = new RelayCommand(_ => ToggleFullscreen());
             CloseApplicationCommand = new RelayCommand(_ => Application.Current.Shutdown());
             OpenUsageLogCommand = new RelayCommand(_ => OpenUsageLog());
@@ -95,7 +96,12 @@ namespace NetworkService.ViewModel
 
         public void ShowMessage(string title, string messageText)
         {
-            MessageBoxWindow messageBoxWindow = new MessageBoxWindow(title, messageText, "OK");
+            ShowMessage(title, messageText, "OK");
+        }
+
+        public void ShowMessage(string title, string messageText, string confirmButtonText)
+        {
+            MessageBoxWindow messageBoxWindow = new MessageBoxWindow(title, messageText, confirmButtonText);
             messageBoxWindow.Owner = Application.Current.MainWindow;
             messageBoxWindow.ShowDialog();
         }
@@ -206,16 +212,15 @@ namespace NetworkService.ViewModel
             }
 
             DateTime measurementTime = DateTime.Now;
+            WriteMeasurementLog(entityIndex, entity, measure, measurementTime);
 
             Application.Current.Dispatcher.Invoke(() =>
             {
                 entity.HasMeasurement = true;
                 entity.LastMeasure = measure;
-                MeasurementGraph.AddMeasurement(entity, measure, measurementTime);
+                MeasurementGraph.RefreshGraphPointsFromLog();
                 NetworkEntities.RefreshFilter();
             });
-
-            WriteMeasurementLog(entityIndex, entity, measure, measurementTime);
         }
 
         private void WriteMeasurementLog(int simulatorEntityIndex, MeracPotrosnje entity, double measure, DateTime measurementTime)
@@ -247,25 +252,73 @@ namespace NetworkService.ViewModel
 
         public void AddEntityFromSelectedType(string selectedEntityType)
         {
-            EntityType entityType = selectedEntityType == "Smart Meter"
-                ? EntityType.SMART_METER
-                : EntityType.INTERVAL_METER;
-
-            EntityTypeInfo typeInfo = entityType == EntityType.SMART_METER
-                ? new EntityTypeInfo("Smart Meter", "Images/smart-meter.png", EntityType.SMART_METER)
-                : new EntityTypeInfo("Interval Meter", "Images/interval-meter.png", EntityType.INTERVAL_METER);
-
+            EntityTypeInfo typeInfo = GetTypeInfo(selectedEntityType);
             int newId = GetNextEntityId();
+            MeracPotrosnje entity = CreateEntity(newId, typeInfo.Name + " " + newId, typeInfo, 0, false);
 
-            var entity = new MeracPotrosnje
+            AddEntityToCollections(entity);
+
+            if (MeasurementGraph.SelectedEntity == null)
             {
-                Id = newId,
-                Name = typeInfo.Name + " " + newId,
-                Type = typeInfo,
-                LastMeasure = 0,
-                HasMeasurement = false
-            };
+                MeasurementGraph.SelectedEntity = entity;
+            }
 
+            RestartMeteringSimulatorIfPossible();
+            ShowMessage(
+                "Entity added",
+                "Entity has been successfully added.\n" +
+                "ID: " + entity.Id + "\n" +
+                "Name: " + entity.Name + "\n" +
+                "Type: " + entity.TypeName,
+                "OK");
+        }
+
+        private void InitializeDefaultEntities()
+        {
+            EntityTypeInfo intervalMeter = GetTypeInfo("Interval Meter");
+            EntityTypeInfo smartMeter = GetTypeInfo("Smart Meter");
+
+            AddEntityToCollections(CreateEntity(0, "Interval Meter 0", intervalMeter, 1.12, true));
+            AddEntityToCollections(CreateEntity(1, "Smart Meter 1", smartMeter, 1.85, true));
+            AddEntityToCollections(CreateEntity(2, "Interval Meter 2", intervalMeter, 2.21, true));
+
+            EnsureInitialMeasurementsExistInLog();
+            MeasurementGraph.SelectedEntity = NetworkEntities.Entities.FirstOrDefault();
+            MeasurementGraph.RefreshGraphPointsFromLog();
+        }
+
+        private void EnsureInitialMeasurementsExistInLog()
+        {
+            string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", "measurements_log.txt");
+
+            if (File.Exists(logFilePath) && new FileInfo(logFilePath).Length > 0)
+            {
+                return;
+            }
+
+            DateTime seedTime = DateTime.Now.AddSeconds(-3);
+
+            for (int i = 0; i < NetworkEntities.Entities.Count; i++)
+            {
+                MeracPotrosnje entity = NetworkEntities.Entities[i];
+                WriteMeasurementLog(i, entity, entity.LastMeasure, seedTime.AddSeconds(i));
+            }
+        }
+
+        private MeracPotrosnje CreateEntity(int id, string name, EntityTypeInfo typeInfo, double lastMeasure, bool hasMeasurement)
+        {
+            return new MeracPotrosnje
+            {
+                Id = id,
+                Name = name,
+                Type = typeInfo,
+                LastMeasure = lastMeasure,
+                HasMeasurement = hasMeasurement
+            };
+        }
+
+        private void AddEntityToCollections(MeracPotrosnje entity)
+        {
             lock (entitiesLock)
             {
                 listaObjekata.Add(entity);
@@ -274,13 +327,16 @@ namespace NetworkService.ViewModel
             NetworkEntities.Entities.Add(entity);
             NetworkEntities.RefreshFilter();
             NetworkDisplay.RefreshAvailableEntities(NetworkEntities.Entities);
+        }
 
-            if (MeasurementGraph.SelectedEntity == null)
+        private EntityTypeInfo GetTypeInfo(string selectedEntityType)
+        {
+            if (selectedEntityType == "Smart Meter")
             {
-                MeasurementGraph.SelectedEntity = entity;
+                return new EntityTypeInfo("Smart Meter", "Images/smart-meter.png", EntityType.SMART_METER);
             }
 
-            RestartMeteringSimulatorIfPossible();
+            return new EntityTypeInfo("Interval Meter", "Images/interval-meter.png", EntityType.INTERVAL_METER);
         }
 
         public void RemoveEntity(MeracPotrosnje entity)
@@ -498,10 +554,7 @@ namespace NetworkService.ViewModel
 
         private bool HasValidIdFilter()
         {
-            int idValue;
-            bool hasOperator = Filter.IsLessThan || Filter.IsEqual || Filter.IsGreaterThan;
-            bool hasValidValue = int.TryParse(Filter.IdValue, out idValue);
-            return hasOperator && hasValidValue;
+            return Filter.HasValidIdFilter();
         }
 
         private bool EntityIdMatchesFilter(int entityId)
@@ -546,8 +599,15 @@ namespace NetworkService.ViewModel
                 return;
             }
 
-            parent.RemoveEntity(SelectedEntity);
+            MeracPotrosnje removedEntity = SelectedEntity;
+            parent.RemoveEntity(removedEntity);
             SelectedEntity = null;
+            parent.ShowMessage(
+                "Entity deleted",
+                "Entity has been successfully deleted.\n" +
+                "ID: " + removedEntity.Id + "\n" +
+                "Name: " + removedEntity.Name + "\n" +
+                "Type: " + removedEntity.TypeName);
         }
 
         private void SaveCurrentFilter()
@@ -665,6 +725,7 @@ namespace NetworkService.ViewModel
     {
         private string selectedType;
         private string idValue;
+        private string idValidationMessage;
         private bool isLessThan;
         private bool isEqual;
         private bool isGreaterThan;
@@ -686,7 +747,18 @@ namespace NetworkService.ViewModel
             set
             {
                 idValue = value;
+                ValidateIdFilter();
                 OnPropertyChanged("IdValue");
+            }
+        }
+
+        public string IdValidationMessage
+        {
+            get { return idValidationMessage; }
+            private set
+            {
+                idValidationMessage = value;
+                OnPropertyChanged("IdValidationMessage");
             }
         }
 
@@ -696,6 +768,7 @@ namespace NetworkService.ViewModel
             set
             {
                 isLessThan = value;
+                ValidateIdFilter();
                 OnPropertyChanged("IsLessThan");
             }
         }
@@ -706,6 +779,7 @@ namespace NetworkService.ViewModel
             set
             {
                 isEqual = value;
+                ValidateIdFilter();
                 OnPropertyChanged("IsEqual");
             }
         }
@@ -716,6 +790,7 @@ namespace NetworkService.ViewModel
             set
             {
                 isGreaterThan = value;
+                ValidateIdFilter();
                 OnPropertyChanged("IsGreaterThan");
             }
         }
@@ -730,10 +805,44 @@ namespace NetworkService.ViewModel
             }
         }
 
+        public bool HasValidIdFilter()
+        {
+            int parsedId;
+            bool hasOperator = IsLessThan || IsEqual || IsGreaterThan;
+            bool hasValue = !string.IsNullOrWhiteSpace(IdValue);
+            return hasOperator && hasValue && int.TryParse(IdValue, out parsedId);
+        }
+
+        private void ValidateIdFilter()
+        {
+            if (string.IsNullOrWhiteSpace(IdValue))
+            {
+                IdValidationMessage = string.Empty;
+                return;
+            }
+
+            int parsedId;
+
+            if (!int.TryParse(IdValue, out parsedId))
+            {
+                IdValidationMessage = "ID must be a whole number.";
+                return;
+            }
+
+            if (!IsLessThan && !IsEqual && !IsGreaterThan)
+            {
+                IdValidationMessage = "Choose <, = or > for ID filter.";
+                return;
+            }
+
+            IdValidationMessage = string.Empty;
+        }
+
         public FilterViewModel()
         {
-            SelectedType = "All";
-            IdValue = string.Empty;
+            selectedType = "All";
+            idValue = string.Empty;
+            idValidationMessage = string.Empty;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -1076,7 +1185,7 @@ namespace NetworkService.ViewModel
 
     public class MeasurementGraphViewModel : INotifyPropertyChanged
     {
-        private readonly Dictionary<MeracPotrosnje, List<MeasurementHistoryItem>> measurementHistory;
+        private readonly string logFilePath;
         private MeracPotrosnje selectedEntity;
 
         public ObservableCollection<MeracPotrosnje> Entities { get; private set; }
@@ -1089,7 +1198,7 @@ namespace NetworkService.ViewModel
             {
                 selectedEntity = value;
                 OnPropertyChanged("SelectedEntity");
-                RefreshGraphPoints();
+                RefreshGraphPointsFromLog();
             }
         }
 
@@ -1097,65 +1206,21 @@ namespace NetworkService.ViewModel
         {
             Entities = entities;
             LastMeasurements = new ObservableCollection<GraphPointViewModel>();
-            measurementHistory = new Dictionary<MeracPotrosnje, List<MeasurementHistoryItem>>();
+            logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", "measurements_log.txt");
         }
 
-        public void AddMeasurement(MeracPotrosnje entity, double measure, DateTime time)
-        {
-            if (entity == null)
-            {
-                return;
-            }
-
-            if (!measurementHistory.ContainsKey(entity))
-            {
-                measurementHistory[entity] = new List<MeasurementHistoryItem>();
-            }
-
-            measurementHistory[entity].Add(new MeasurementHistoryItem(measure, time));
-
-            if (measurementHistory[entity].Count > 50)
-            {
-                measurementHistory[entity].RemoveAt(0);
-            }
-
-            if (SelectedEntity == null)
-            {
-                SelectedEntity = entity;
-            }
-
-            if (SelectedEntity == entity)
-            {
-                RefreshGraphPoints();
-            }
-        }
-
-        public void RemoveEntityHistory(MeracPotrosnje entity)
-        {
-            if (entity == null)
-            {
-                return;
-            }
-
-            if (measurementHistory.ContainsKey(entity))
-            {
-                measurementHistory.Remove(entity);
-            }
-
-            RefreshGraphPoints();
-        }
-
-        private void RefreshGraphPoints()
+        public void RefreshGraphPointsFromLog()
         {
             LastMeasurements.Clear();
 
-            if (SelectedEntity == null || !measurementHistory.ContainsKey(SelectedEntity))
+            if (SelectedEntity == null || !File.Exists(logFilePath))
             {
                 return;
             }
 
-            List<MeasurementHistoryItem> lastItems = measurementHistory[SelectedEntity]
-                .Skip(Math.Max(0, measurementHistory[SelectedEntity].Count - 5))
+            List<MeasurementHistoryItem> measurements = ReadMeasurementsForSelectedEntity();
+            List<MeasurementHistoryItem> lastItems = measurements
+                .Skip(Math.Max(0, measurements.Count - 5))
                 .ToList();
 
             double[] xPositions = new double[] { 52, 158, 264, 370, 476 };
@@ -1164,6 +1229,112 @@ namespace NetworkService.ViewModel
             {
                 LastMeasurements.Add(new GraphPointViewModel(lastItems[i], xPositions[i]));
             }
+        }
+
+        public void RemoveEntityHistory(MeracPotrosnje entity)
+        {
+            RefreshGraphPointsFromLog();
+        }
+
+        private List<MeasurementHistoryItem> ReadMeasurementsForSelectedEntity()
+        {
+            List<MeasurementHistoryItem> measurements = new List<MeasurementHistoryItem>();
+
+            if (SelectedEntity == null || !File.Exists(logFilePath))
+            {
+                return measurements;
+            }
+
+            string[] lines = File.ReadAllLines(logFilePath, Encoding.UTF8);
+
+            foreach (string line in lines)
+            {
+                MeasurementHistoryItem item;
+
+                if (TryParseLogLine(line, SelectedEntity.Id, out item))
+                {
+                    measurements.Add(item);
+                }
+            }
+
+            return measurements;
+        }
+
+        private bool TryParseLogLine(string line, int entityId, out MeasurementHistoryItem item)
+        {
+            item = null;
+
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                return false;
+            }
+
+            string[] parts = line.Split('|');
+
+            if (parts.Length < 6)
+            {
+                return false;
+            }
+
+            DateTime time;
+
+            if (!DateTime.TryParseExact(parts[0].Trim(), "yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture, DateTimeStyles.None, out time))
+            {
+                return false;
+            }
+
+            int parsedEntityId;
+
+            if (!TryReadIntPart(parts, "Entity ID:", out parsedEntityId) || parsedEntityId != entityId)
+            {
+                return false;
+            }
+
+            double value;
+
+            if (!TryReadMeasurementValue(parts, out value))
+            {
+                return false;
+            }
+
+            item = new MeasurementHistoryItem(value, time);
+            return true;
+        }
+
+        private bool TryReadIntPart(string[] parts, string label, out int value)
+        {
+            value = 0;
+
+            foreach (string part in parts)
+            {
+                string trimmedPart = part.Trim();
+
+                if (trimmedPart.StartsWith(label))
+                {
+                    string rawValue = trimmedPart.Substring(label.Length).Trim();
+                    return int.TryParse(rawValue, out value);
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryReadMeasurementValue(string[] parts, out double value)
+        {
+            value = 0;
+
+            foreach (string part in parts)
+            {
+                string trimmedPart = part.Trim();
+
+                if (trimmedPart.StartsWith("Value:"))
+                {
+                    string rawValue = trimmedPart.Substring("Value:".Length).Replace("kWh", string.Empty).Trim();
+                    return double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+                }
+            }
+
+            return false;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
