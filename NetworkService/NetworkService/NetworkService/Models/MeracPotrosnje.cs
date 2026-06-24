@@ -3,7 +3,7 @@ using System.ComponentModel;
 
 namespace NetworkService.Models
 {
-    public class MeracPotrosnje : INotifyPropertyChanged
+    public class PowerConsumptionMeter : INotifyPropertyChanged
     {
         private int id;
         private string name;
@@ -168,7 +168,7 @@ namespace NetworkService.Models
             }
         }
 
-        public MeracPotrosnje()
+        public PowerConsumptionMeter()
         {
             id = 0;
             name = string.Empty;

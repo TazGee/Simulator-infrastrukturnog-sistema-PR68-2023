@@ -86,7 +86,7 @@
                                        FontWeight="Bold"
                                        FontSize="25"
                                        LineHeight="26"/>
-                            <TextBlock Text="DISPEČERSKI SISTEM"
+                            <TextBlock Text="DISPATCHER CONTROL SYSTEM"
                                        FontSize="14"
                                        LineHeight="15"/>
                         </StackPanel>

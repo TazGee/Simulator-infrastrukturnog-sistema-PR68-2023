@@ -25,7 +25,7 @@ namespace NetworkService.ViewModel
         private readonly object logLock = new object();
         private int selectedRightTabIndex;
 
-        public List<MeracPotrosnje> listaObjekata = new List<MeracPotrosnje>();
+        public List<PowerConsumptionMeter> monitoredEntities = new List<PowerConsumptionMeter>();
 
         public NetworkEntitiesViewModel NetworkEntities { get; private set; }
         public NetworkDisplayViewModel NetworkDisplay { get; private set; }
@@ -139,7 +139,7 @@ namespace NetworkService.ViewModel
 
                     lock (entitiesLock)
                     {
-                        objectCount = listaObjekata.Count;
+                        objectCount = monitoredEntities.Count;
                     }
 
                     byte[] data = Encoding.ASCII.GetBytes(objectCount.ToString());
@@ -196,13 +196,13 @@ namespace NetworkService.ViewModel
 
         private void UpdateEntityMeasurement(int entityIndex, double measure)
         {
-            MeracPotrosnje entity = null;
+            PowerConsumptionMeter entity = null;
 
             lock (entitiesLock)
             {
-                if (entityIndex >= 0 && entityIndex < listaObjekata.Count)
+                if (entityIndex >= 0 && entityIndex < monitoredEntities.Count)
                 {
-                    entity = listaObjekata[entityIndex];
+                    entity = monitoredEntities[entityIndex];
                 }
             }
 
@@ -223,7 +223,7 @@ namespace NetworkService.ViewModel
             });
         }
 
-        private void WriteMeasurementLog(int simulatorEntityIndex, MeracPotrosnje entity, double measure, DateTime measurementTime)
+        private void WriteMeasurementLog(int simulatorEntityIndex, PowerConsumptionMeter entity, double measure, DateTime measurementTime)
         {
             string logsFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
 
@@ -236,7 +236,7 @@ namespace NetworkService.ViewModel
             string status = measure >= 0.34 && measure <= 2.73 ? "VALID" : "INVALID";
 
             string logLine = measurementTime.ToString("yyyy-MM-dd HH:mm:ss.fff") +
-                             " | Simulator entity: Entitet_" + simulatorEntityIndex +
+                             " | Simulator entity: Entity_" + simulatorEntityIndex +
                              " | Entity ID: " + entity.Id +
                              " | Name: " + entity.Name +
                              " | Type: " + entity.TypeName +
@@ -254,7 +254,7 @@ namespace NetworkService.ViewModel
         {
             EntityTypeInfo typeInfo = GetTypeInfo(selectedEntityType);
             int newId = GetNextEntityId();
-            MeracPotrosnje entity = CreateEntity(newId, typeInfo.Name + " " + newId, typeInfo, 0, false);
+            PowerConsumptionMeter entity = CreateEntity(newId, typeInfo.Name + " " + newId, typeInfo, 0, false);
 
             AddEntityToCollections(entity);
 
@@ -300,14 +300,14 @@ namespace NetworkService.ViewModel
 
             for (int i = 0; i < NetworkEntities.Entities.Count; i++)
             {
-                MeracPotrosnje entity = NetworkEntities.Entities[i];
+                PowerConsumptionMeter entity = NetworkEntities.Entities[i];
                 WriteMeasurementLog(i, entity, entity.LastMeasure, seedTime.AddSeconds(i));
             }
         }
 
-        private MeracPotrosnje CreateEntity(int id, string name, EntityTypeInfo typeInfo, double lastMeasure, bool hasMeasurement)
+        private PowerConsumptionMeter CreateEntity(int id, string name, EntityTypeInfo typeInfo, double lastMeasure, bool hasMeasurement)
         {
-            return new MeracPotrosnje
+            return new PowerConsumptionMeter
             {
                 Id = id,
                 Name = name,
@@ -317,11 +317,11 @@ namespace NetworkService.ViewModel
             };
         }
 
-        private void AddEntityToCollections(MeracPotrosnje entity)
+        private void AddEntityToCollections(PowerConsumptionMeter entity)
         {
             lock (entitiesLock)
             {
-                listaObjekata.Add(entity);
+                monitoredEntities.Add(entity);
             }
 
             NetworkEntities.Entities.Add(entity);
@@ -339,7 +339,7 @@ namespace NetworkService.ViewModel
             return new EntityTypeInfo("Interval Meter", "Images/interval-meter.png", EntityType.INTERVAL_METER);
         }
 
-        public void RemoveEntity(MeracPotrosnje entity)
+        public void RemoveEntity(PowerConsumptionMeter entity)
         {
             if (entity == null)
             {
@@ -348,7 +348,7 @@ namespace NetworkService.ViewModel
 
             lock (entitiesLock)
             {
-                listaObjekata.Remove(entity);
+                monitoredEntities.Remove(entity);
             }
 
             NetworkDisplay.RemoveEntityFromGrid(entity);
@@ -369,12 +369,12 @@ namespace NetworkService.ViewModel
         {
             lock (entitiesLock)
             {
-                if (listaObjekata.Count == 0)
+                if (monitoredEntities.Count == 0)
                 {
                     return 0;
                 }
 
-                return listaObjekata.Max(entity => entity.Id) + 1;
+                return monitoredEntities.Max(entity => entity.Id) + 1;
             }
         }
 
@@ -433,11 +433,11 @@ namespace NetworkService.ViewModel
     public class NetworkEntitiesViewModel : INotifyPropertyChanged
     {
         private readonly MainWindowViewModel parent;
-        private MeracPotrosnje selectedEntity;
+        private PowerConsumptionMeter selectedEntity;
         private string selectedEntityType;
         private FilterPresetViewModel selectedSavedFilter;
 
-        public ObservableCollection<MeracPotrosnje> Entities { get; private set; }
+        public ObservableCollection<PowerConsumptionMeter> Entities { get; private set; }
         public ICollectionView FilteredEntities { get; private set; }
         public ObservableCollection<FilterPresetViewModel> SavedFilters { get; private set; }
         public FilterViewModel Filter { get; private set; }
@@ -447,7 +447,7 @@ namespace NetworkService.ViewModel
         public ICommand SaveFilterCommand { get; private set; }
         public ICommand ClearFiltersCommand { get; private set; }
 
-        public MeracPotrosnje SelectedEntity
+        public PowerConsumptionMeter SelectedEntity
         {
             get { return selectedEntity; }
             set
@@ -485,7 +485,7 @@ namespace NetworkService.ViewModel
         public NetworkEntitiesViewModel(MainWindowViewModel parent)
         {
             this.parent = parent;
-            Entities = new ObservableCollection<MeracPotrosnje>();
+            Entities = new ObservableCollection<PowerConsumptionMeter>();
             SavedFilters = new ObservableCollection<FilterPresetViewModel>();
             Filter = new FilterViewModel();
             Filter.SelectedType = "All";
@@ -516,7 +516,7 @@ namespace NetworkService.ViewModel
 
         private bool FilterEntity(object item)
         {
-            MeracPotrosnje entity = item as MeracPotrosnje;
+            PowerConsumptionMeter entity = item as PowerConsumptionMeter;
 
             if (entity == null)
             {
@@ -599,7 +599,7 @@ namespace NetworkService.ViewModel
                 return;
             }
 
-            MeracPotrosnje removedEntity = SelectedEntity;
+            PowerConsumptionMeter removedEntity = SelectedEntity;
             parent.RemoveEntity(removedEntity);
             SelectedEntity = null;
             parent.ShowMessage(
@@ -861,7 +861,7 @@ namespace NetworkService.ViewModel
     public class NetworkDisplayViewModel : INotifyPropertyChanged
     {
         private readonly MainWindowViewModel parent;
-        private readonly ObservableCollection<MeracPotrosnje> allEntities;
+        private readonly ObservableCollection<PowerConsumptionMeter> allEntities;
         private NetworkGridSlotViewModel selectedConnectionStartSlot;
 
         public ObservableCollection<EntityTypeGroupViewModel> AvailableEntityTypes { get; private set; }
@@ -870,7 +870,7 @@ namespace NetworkService.ViewModel
         public ICommand AutoPlaceEntitiesCommand { get; private set; }
         public ICommand RemoveEntityFromSlotCommand { get; private set; }
 
-        public NetworkDisplayViewModel(MainWindowViewModel parent, ObservableCollection<MeracPotrosnje> allEntities)
+        public NetworkDisplayViewModel(MainWindowViewModel parent, ObservableCollection<PowerConsumptionMeter> allEntities)
         {
             this.parent = parent;
             this.allEntities = allEntities;
@@ -890,7 +890,7 @@ namespace NetworkService.ViewModel
             RemoveEntityFromSlotCommand = new RelayCommand(parameter => RemoveEntityFromSlot(parameter as NetworkGridSlotViewModel));
         }
 
-        public bool CanPlaceEntityInSlot(MeracPotrosnje entity, NetworkGridSlotViewModel targetSlot)
+        public bool CanPlaceEntityInSlot(PowerConsumptionMeter entity, NetworkGridSlotViewModel targetSlot)
         {
             if (entity == null || targetSlot == null)
             {
@@ -900,7 +900,7 @@ namespace NetworkService.ViewModel
             return targetSlot.Entity == null || targetSlot.Entity == entity;
         }
 
-        public bool PlaceEntityInSlot(MeracPotrosnje entity, NetworkGridSlotViewModel targetSlot)
+        public bool PlaceEntityInSlot(PowerConsumptionMeter entity, NetworkGridSlotViewModel targetSlot)
         {
             if (!CanPlaceEntityInSlot(entity, targetSlot))
             {
@@ -949,7 +949,7 @@ namespace NetworkService.ViewModel
             ClearSelectedConnectionStartSlot();
         }
 
-        private void AddConnection(MeracPotrosnje firstEntity, MeracPotrosnje secondEntity)
+        private void AddConnection(PowerConsumptionMeter firstEntity, PowerConsumptionMeter secondEntity)
         {
             if (firstEntity == null || secondEntity == null || firstEntity == secondEntity)
             {
@@ -984,14 +984,14 @@ namespace NetworkService.ViewModel
                 return;
             }
 
-            MeracPotrosnje entity = slot.Entity;
+            PowerConsumptionMeter entity = slot.Entity;
             slot.Entity = null;
             RemoveConnectionsForEntity(entity);
             ClearSelectedConnectionStartSlot();
             RefreshAvailableEntities(allEntities);
         }
 
-        public void RemoveEntityFromGrid(MeracPotrosnje entity)
+        public void RemoveEntityFromGrid(PowerConsumptionMeter entity)
         {
             if (entity == null)
             {
@@ -1011,7 +1011,7 @@ namespace NetworkService.ViewModel
             RefreshAvailableEntities(allEntities);
         }
 
-        private void RemoveConnectionsForEntity(MeracPotrosnje entity)
+        private void RemoveConnectionsForEntity(PowerConsumptionMeter entity)
         {
             List<NetworkConnectionViewModel> connectionsToRemove = Connections
                 .Where(connection => connection.FirstEntity == entity || connection.SecondEntity == entity)
@@ -1023,19 +1023,19 @@ namespace NetworkService.ViewModel
             }
         }
 
-        public NetworkGridSlotViewModel GetSlotByEntity(MeracPotrosnje entity)
+        public NetworkGridSlotViewModel GetSlotByEntity(PowerConsumptionMeter entity)
         {
             return DropSlots.FirstOrDefault(slot => slot.Entity == entity);
         }
 
-        public void RefreshAvailableEntities(IEnumerable<MeracPotrosnje> entities)
+        public void RefreshAvailableEntities(IEnumerable<PowerConsumptionMeter> entities)
         {
             foreach (EntityTypeGroupViewModel group in AvailableEntityTypes)
             {
                 group.Entities.Clear();
             }
 
-            foreach (MeracPotrosnje entity in entities)
+            foreach (PowerConsumptionMeter entity in entities)
             {
                 if (IsEntityPlacedOnGrid(entity))
                 {
@@ -1051,7 +1051,7 @@ namespace NetworkService.ViewModel
             }
         }
 
-        private bool IsEntityPlacedOnGrid(MeracPotrosnje entity)
+        private bool IsEntityPlacedOnGrid(PowerConsumptionMeter entity)
         {
             return DropSlots.Any(slot => slot.Entity == entity);
         }
@@ -1068,11 +1068,11 @@ namespace NetworkService.ViewModel
 
         private void AutoPlaceEntities()
         {
-            List<MeracPotrosnje> availableEntities = allEntities
+            List<PowerConsumptionMeter> availableEntities = allEntities
                 .Where(entity => !IsEntityPlacedOnGrid(entity))
                 .ToList();
 
-            foreach (MeracPotrosnje entity in availableEntities)
+            foreach (PowerConsumptionMeter entity in availableEntities)
             {
                 NetworkGridSlotViewModel freeSlot = DropSlots.FirstOrDefault(slot => slot.Entity == null);
 
@@ -1102,7 +1102,7 @@ namespace NetworkService.ViewModel
 
     public class NetworkGridSlotViewModel : INotifyPropertyChanged
     {
-        private MeracPotrosnje entity;
+        private PowerConsumptionMeter entity;
         private bool isSelectedForConnection;
 
         public int SlotNumber { get; private set; }
@@ -1112,7 +1112,7 @@ namespace NetworkService.ViewModel
             get { return "Slot " + SlotNumber; }
         }
 
-        public MeracPotrosnje Entity
+        public PowerConsumptionMeter Entity
         {
             get { return entity; }
             set
@@ -1159,10 +1159,10 @@ namespace NetworkService.ViewModel
 
     public class NetworkConnectionViewModel
     {
-        public MeracPotrosnje FirstEntity { get; private set; }
-        public MeracPotrosnje SecondEntity { get; private set; }
+        public PowerConsumptionMeter FirstEntity { get; private set; }
+        public PowerConsumptionMeter SecondEntity { get; private set; }
 
-        public NetworkConnectionViewModel(MeracPotrosnje firstEntity, MeracPotrosnje secondEntity)
+        public NetworkConnectionViewModel(PowerConsumptionMeter firstEntity, PowerConsumptionMeter secondEntity)
         {
             FirstEntity = firstEntity;
             SecondEntity = secondEntity;
@@ -1173,25 +1173,25 @@ namespace NetworkService.ViewModel
     {
         public string Name { get; private set; }
         public bool IsExpanded { get; set; }
-        public ObservableCollection<MeracPotrosnje> Entities { get; private set; }
+        public ObservableCollection<PowerConsumptionMeter> Entities { get; private set; }
 
         public EntityTypeGroupViewModel(string name)
         {
             Name = name;
             IsExpanded = true;
-            Entities = new ObservableCollection<MeracPotrosnje>();
+            Entities = new ObservableCollection<PowerConsumptionMeter>();
         }
     }
 
     public class MeasurementGraphViewModel : INotifyPropertyChanged
     {
         private readonly string logFilePath;
-        private MeracPotrosnje selectedEntity;
+        private PowerConsumptionMeter selectedEntity;
 
-        public ObservableCollection<MeracPotrosnje> Entities { get; private set; }
+        public ObservableCollection<PowerConsumptionMeter> Entities { get; private set; }
         public ObservableCollection<GraphPointViewModel> LastMeasurements { get; private set; }
 
-        public MeracPotrosnje SelectedEntity
+        public PowerConsumptionMeter SelectedEntity
         {
             get { return selectedEntity; }
             set
@@ -1202,7 +1202,7 @@ namespace NetworkService.ViewModel
             }
         }
 
-        public MeasurementGraphViewModel(ObservableCollection<MeracPotrosnje> entities)
+        public MeasurementGraphViewModel(ObservableCollection<PowerConsumptionMeter> entities)
         {
             Entities = entities;
             LastMeasurements = new ObservableCollection<GraphPointViewModel>();
@@ -1231,7 +1231,7 @@ namespace NetworkService.ViewModel
             }
         }
 
-        public void RemoveEntityHistory(MeracPotrosnje entity)
+        public void RemoveEntityHistory(PowerConsumptionMeter entity)
         {
             RefreshGraphPointsFromLog();
         }

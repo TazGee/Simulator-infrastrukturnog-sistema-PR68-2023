@@ -17,7 +17,7 @@ namespace NetworkService
     public partial class MainWindow : Window
     {
         private Point dragStartPoint;
-        private MeracPotrosnje draggedEntity;
+        private PowerConsumptionMeter draggedEntity;
         private FrameworkElement dragSourceElement;
 
         public MainWindow()
@@ -118,7 +118,7 @@ namespace NetworkService
                 return;
             }
 
-            MeracPotrosnje entity = handle.DataContext as MeracPotrosnje;
+            PowerConsumptionMeter entity = handle.DataContext as PowerConsumptionMeter;
 
             if (entity == null)
             {
@@ -147,7 +147,7 @@ namespace NetworkService
             StartDragPreparation(handle, slot.Entity, e);
         }
 
-        private void StartDragPreparation(FrameworkElement handle, MeracPotrosnje entity, MouseButtonEventArgs e)
+        private void StartDragPreparation(FrameworkElement handle, PowerConsumptionMeter entity, MouseButtonEventArgs e)
         {
             draggedEntity = entity;
             dragSourceElement = handle;
@@ -198,7 +198,7 @@ namespace NetworkService
 
         private void NetworkGridSlot_DragOver(object sender, DragEventArgs e)
         {
-            MeracPotrosnje entity = e.Data.GetData(typeof(MeracPotrosnje)) as MeracPotrosnje;
+            PowerConsumptionMeter entity = e.Data.GetData(typeof(PowerConsumptionMeter)) as PowerConsumptionMeter;
             NetworkGridSlotViewModel targetSlot = GetSlotFromSender(sender);
             MainWindowViewModel viewModel = DataContext as MainWindowViewModel;
 
@@ -216,7 +216,7 @@ namespace NetworkService
 
         private void NetworkGridSlot_Drop(object sender, DragEventArgs e)
         {
-            MeracPotrosnje entity = e.Data.GetData(typeof(MeracPotrosnje)) as MeracPotrosnje;
+            PowerConsumptionMeter entity = e.Data.GetData(typeof(PowerConsumptionMeter)) as PowerConsumptionMeter;
             NetworkGridSlotViewModel targetSlot = GetSlotFromSender(sender);
             MainWindowViewModel viewModel = DataContext as MainWindowViewModel;
 
